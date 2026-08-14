@@ -4,7 +4,7 @@
 Rendered through matplotlib's PGF backend with pdflatex, so glyphs and maths are
 set by the same engine as the manuscript and match `elsarticle` at 11pt.
 
-    python3 makefigs.py            # writes *.pdf (and *.png previews) here
+    python3 makefigs.py            # writes *.pdf (and *.png previews) into ../figures/
 
 Inputs, all produced by the scripts archived alongside:
     sweep50_cpu.csv   10 x 2500-spin instances, max_states and beta series
@@ -53,8 +53,8 @@ def load(name):
 
 
 def save(fig, stem):
-    fig.savefig(os.path.join(HERE, stem + ".pdf"), bbox_inches="tight")
-    fig.savefig(os.path.join(HERE, stem + ".png"), bbox_inches="tight", dpi=200)
+    fig.savefig(os.path.join(HERE, "..", "figures", stem + ".pdf"), bbox_inches="tight")
+    fig.savefig(os.path.join(HERE, "..", "figures", stem + ".png"), bbox_inches="tight", dpi=200)
     plt.close(fig)
     print("wrote", stem + ".pdf")
 

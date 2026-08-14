@@ -33,27 +33,18 @@
 \title{Version 2.0.0 --- SpinGlassPEPS.jl: Tensor-network package for
 Ising-like optimization on quasi-two-dimensional graphs}
 
-%% Authorship settled: the list below reproduces the original publication, which is
-%% correct for this update. Project.toml additionally credits Dariusz Kurzyk as a
-%% package co-author; he is not a co-author of the improvements described here, so
-%% the discrepancy is intentional and needs no reconciliation.
-\author[iitis]{Tomasz \'Smierzchalski}
-\author[uj,ujdoc]{Anna Maria Dziubyna}
-\author[iitis]{Konrad Ja\l{}owiecki}
-\author[iitis]{Zakaria Mzaouali}
+%% Authorship: this v2.0.0 update is authored by {\L}ukasz Pawela and
+%% Bart{\l}omiej Gardas -- the authors of the update. The remaining authors of the
+%% original publication wrote the original package, not the improvements described
+%% in this update.
 \author[iitis]{\L{}ukasz Pawela\corref{cor}}
 \ead{lpawela@iitis.pl}
 \author[iitis]{Bart\l{}omiej Gardas}
-\author[uj]{Marek M. Rams}
 
 \cortext[cor]{Corresponding author.}
 
 \address[iitis]{Institute of Theoretical and Applied Informatics, Polish Academy
 of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
-\address[uj]{Jagiellonian University, Institute of Theoretical Physics,
-\L{}ojasiewicza 11, 30-348 Krak\'ow, Poland}
-\address[ujdoc]{Jagiellonian University, Doctoral School of Exact and Natural
-Sciences, \L{}ojasiewicza 11, 30-348 Krak\'ow, Poland}
 
 \begin{abstract}
 This update consolidates the four separately registered packages of
@@ -358,7 +349,7 @@ vectors per call. Separately, the multi-tensor contraction temporaries were move
 the collected heap onto explicit allocation, worth $1.25\times$ on CPU with allocated
 bytes down by two thirds; in isolation that allocator is ${\approx}7\%$ \emph{slower}
 per call, so the gain is entirely the collection it avoids and had to be measured in
-a full solve rather than a microbenchmark.
+a full solve rather than a microbenchmark. The abstract's ${\approx}1.15\times$ per-device figure summarizes these two allocation changes taken together; they contribute unequally by device, as the per-change numbers above show.
 
 \textbf{Impact, limitations and outlook.} Contraction error is now an observable
 rather than an article of faith, letting a practitioner distinguish a converged run
@@ -366,7 +357,7 @@ from a broken one on a problem where no exact answer is available --- the regime
 method exists for --- provided it is read as a statement about the contraction and
 not about solution quality. The consolidation and the deprecation shims make the
 published interface reproducible, and shipping the benchmark instances closes a gap
-in that reproducibility that predates this update.
+in that reproducibility that predates this update. The measurement drivers, raw per-run data, and figure scripts behind every figure and table here are provided with the manuscript sources in the \texttt{benchmarks/} directory, documented in its \texttt{README}.
 
 The limitations are equally plain. The sweep is a genuine speed-up on CPU but not on
 a single GPU, for reasons we measured rather than assumed. Warm starting and the

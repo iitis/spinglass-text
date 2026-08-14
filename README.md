@@ -7,6 +7,8 @@ published version (v1.4.1, SoftwareX **31** (2025) 102257).
 softwarex-update.tex   manuscript
 refs.bib               bibliography
 measurements.md        provenance for every number quoted in the manuscript
+benchmarks/            measurement drivers, raw data, figure scripts (see benchmarks/README.md)
+figures/               generated figures included by the manuscript
 ```
 
 Build (needs `elsarticle.cls`, present in TeX Live):
@@ -45,8 +47,9 @@ and a licence file, and a **GitHub** URL in C2 (other hosts are not accepted).
    `[2.0.0]` accordingly, since no `v2.0.0` tag exists yet (tags currently stop at
    `v1.5.0`). C1 must name a real, tagged, registered release, so the remaining
    action is to tag and register before submission.
-2. **Authorship.** The list reproduces the 2025 article. `Project.toml` also credits
-   Dariusz Kurzyk, who is not an author there. Update authorship is your call.
+2. **Authorship.** Settled: the v2.0.0 update is authored by **Łukasz Pawela** and
+   **Bartłomiej Gardas** (the authors of the update). The other names on the 2025
+   article authored the original package, not this update.
 3. **Acknowledgements.** Placeholder — carry over the funding statements from the
    original article and add anything new.
 4. **Zenodo DOI.** The repository README shows a badge for `10.5281/zenodo.3245496`
