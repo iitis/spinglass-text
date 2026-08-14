@@ -1,0 +1,10 @@
+change,device,metric,before,after
+branch_states,GPU,wall_s,26.62,23.00
+branch_states,GPU,gc_s,4.97,3.16
+branch_states,GPU,alloc_GiB,25.05,23.96
+branch_states,CPU,wall_s,25.10,23.61
+branch_states,CPU,gc_s,8.23,7.50
+branch_states,CPU,alloc_GiB,92.06,91.05
+temporaries,CPU,wall_s,24.17,19.35
+temporaries,CPU,gc_s,7.66,4.20
+temporaries,CPU,alloc_GiB,90.9,32.0
