@@ -12,3 +12,7 @@
 *.nav
 *.snm
 *.vrb
+
+# Python bytecode
+__pycache__/
+*.pyc
