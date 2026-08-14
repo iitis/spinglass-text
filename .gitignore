@@ -16,6 +16,3 @@
 # Python bytecode
 __pycache__/
 *.pyc
-
-# Kept on disk, deliberately not tracked
-chagptreview.md
