@@ -55,7 +55,7 @@ distribution it threw away without recourse to an exact oracle, and an
 inverse-temperature ladder with warm-started boundary matrix product states makes
 choosing $\beta$ empirical rather than a guess. Profiling shows the solver is
 host-bound at every size measured, with garbage collection consuming 18--33\% of a
-solve; addressing that yields ${\approx}1.15\times$ on each device. We also
+solve; addressing it with two allocation changes yields up to ${\approx}1.25\times$ (CPU) and ${\approx}1.16\times$ (GPU). We also
 establish where GPU execution begins to pay, which is later than the original
 article implies.
 \end{abstract}
@@ -158,7 +158,7 @@ never the binding constraint, so raising it cannot change the answer --- previou
 a matter of guesswork.
 
 Across the eight-transformation protocol the solver additionally reports the spread
-of energies and how many transformations reached the best one. Eight independent
+of energies and how many transformations reached the best one. Eight distinct
 contraction orders agreeing is oracle-free evidence; a spread that is a sizeable
 fraction of the energy scale says the result should not be believed however good the
 best energy looks.
@@ -349,7 +349,7 @@ vectors per call. Separately, the multi-tensor contraction temporaries were move
 the collected heap onto explicit allocation, worth $1.25\times$ on CPU with allocated
 bytes down by two thirds; in isolation that allocator is ${\approx}7\%$ \emph{slower}
 per call, so the gain is entirely the collection it avoids and had to be measured in
-a full solve rather than a microbenchmark. The abstract's ${\approx}1.15\times$ per-device figure summarizes these two allocation changes taken together; they contribute unequally by device, as the per-change numbers above show.
+a full solve rather than a microbenchmark.
 
 \textbf{Impact, limitations and outlook.} Contraction error is now an observable
 rather than an article of faith, letting a practitioner distinguish a converged run
@@ -357,7 +357,7 @@ from a broken one on a problem where no exact answer is available --- the regime
 method exists for --- provided it is read as a statement about the contraction and
 not about solution quality. The consolidation and the deprecation shims make the
 published interface reproducible, and shipping the benchmark instances closes a gap
-in that reproducibility that predates this update. The measurement drivers, raw per-run data, and figure scripts behind every figure and table here are provided with the manuscript sources in the \texttt{benchmarks/} directory, documented in its \texttt{README}.
+in that reproducibility that predates this update. The raw per-run data and figure scripts behind every figure and table, together with the drivers for the diversity and energy-vs-runtime results, are provided with the manuscript sources in the \texttt{benchmarks/} directory; the exact crossover and allocation drivers are noted there as the one remaining gap.
 
 The limitations are equally plain. The sweep is a genuine speed-up on CPU but not on
 a single GPU, for reasons we measured rather than assumed. Warm starting and the

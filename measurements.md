@@ -163,10 +163,11 @@ host-side search cost does not confound the device comparison.
 Ratios below 1 mean the host path is faster. Energies agree exactly in every cell
 (−16.4, −210.933334, −3336.773383), so both paths compute the same thing.
 
-**The CPU path is faster in every cell measured**, by ~45× at 36 spins narrowing
-to ~1.5× at 2048 spins and bond 16. The ratio rises monotonically with both
-instance size and bond dimension, so a crossover plausibly exists above this
-range — but it was not reached at 2048 spins / bond 16.
+**The CPU path is faster in every cell of this bond-16 sweep**, by ~45× at 36 spins
+narrowing to ~1.5× at 2048 spins and bond 16. The ratio rises monotonically with
+both instance size and bond dimension; extending to bond 32 (see `crossover.csv`)
+reaches the crossover — the GPU wins at 2048 spins, bond 32, by 3% dense and 17%
+sparse.
 
 Note the direction of the `max_states` bias: the branch-and-bound search is
 host-side on both devices, so a larger `max_states` adds roughly the same absolute
