@@ -20,7 +20,9 @@ PKG=../../SpinGlassPEPS.jl GPU=0 SEED=1 ./run_all.sh
 (regenerating the raw + summary CSVs here), and renders the figures into
 `../figures/`. The crossover and allocation numbers are **timings**, so they are
 measured serially on the single device `GPU=<id>` (clean, uncontended); the other
-cards on a multi-GPU host are left idle. Expect a few hours end to end —
+cards on a multi-GPU host are left idle. The concurrency step is the one exception —
+its concurrent arm is launched multi-threaded (`-t auto`; override with `JTHREADS=N`)
+so the per-transformation solves can overlap. Expect a few hours end to end —
 dominated by per-process JIT and the 2048-spin cells; raw CSVs are written
 incrementally so a failed step keeps completed work. Individual drivers can also
 be run by hand via their `ENV` variables (see each file's header).
@@ -32,6 +34,8 @@ be run by hand via their `ENV` variables (see each file's header).
 | `run_all.sh` | one-shot launcher for the whole suite |
 | `crossover.jl` | driver — one CPU/GPU crossover cell, seeded, N reps → `crossover_raw.csv` |
 | `summarize_crossover.py` | `crossover_raw.csv` → `crossover.csv` (min-of-reps, `cpu_s`/`gpu_s`) |
+| `concurrency.jl` | driver — concurrent-sweep speed-up (Table 1); serial loop vs `sweep_transformations` at limit `c`, paired per-round ratios → `concurrency_raw.csv` |
+| `summarize_concurrency.py` | `concurrency_raw.csv` → `concurrency.csv` (median ratios pivoted to `c=1,2,4,8`) |
 | `alloc.jl` | driver — host allocation profile (wall/GC/bytes) of a fixed solve, seeded, N reps → `alloc_raw.csv` |
 | `sweep50.jl` | driver — energy-vs-runtime sweep over the 50×50 instances → `sweep50_cpu.csv` |
 | `spread.jl` | driver — Z₂-quotient solution spread; `BETAS=2.0,4.0,6.0` → `div3.csv`, `BETAS=3.0,8.0` → `div3_extra.csv` |
@@ -48,6 +52,7 @@ package's `benchmark/instances/square_50x50/`.
 
 - **`quality.pdf`** (Fig. 1): `sweep50_cpu.csv`, `div3.csv` + `div3_extra.csv`, `xtransform.csv`.
 - **`crossover.pdf` / Table 2**: `crossover.csv`.
+- **Table 1** (concurrency): `concurrency.csv` — median ratios, hand-filled into the LaTeX table (it is a table, not a figure).
 - **`allocation.pdf`** (Fig. 3): `alloc.csv`.
 
 ## Allocation A/B (partly manual)

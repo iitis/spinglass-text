@@ -34,6 +34,8 @@ echo "== instantiate + precompile =="
 julia --project="$PKG" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 
 run() { julia --project="$PKG" "$@"; }
+# multi-threaded launch: the concurrent-sweep arm needs several Julia threads to overlap
+runmt() { julia --project="$PKG" -t "${JTHREADS:-auto}" "$@"; }
 
 # ---------------------------------------------------------------------------
 # 1) Crossover: CPU vs one GPU on identical configurations, seeded, min-of-reps.
@@ -58,6 +60,22 @@ for cell in "${CELLS[@]}"; do
     CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/crossover.jl" || echo "  !! GPU cell failed; continuing"
 done
 python3 "$HERE/summarize_crossover.py" "$CROSS" "$HERE/crossover.csv" || echo "  !! summarize failed"
+
+# ---------------------------------------------------------------------------
+# 1b) Concurrent-sweep speed-up (Table 1): the serial 8-transformation loop vs
+#     sweep_transformations at admission limit c, as median per-round paired
+#     ratios (interleaved arms, full reclaim before each timed section).
+#     Launched multi-threaded (runmt) so the concurrent arm can overlap; GPU
+#     stops at c=4 (fanning out over one device never beats the serial loop).
+# ---------------------------------------------------------------------------
+CONC="$HERE/concurrency_raw.csv"; rm -f "$CONC"
+echo "-- concurrency (Table 1): CPU, c=1,2,4,8, 5 rounds --"
+CASE=both DEVICE=cpu LEVELS=1,2,4,8 ROUNDS=5 SEED=$SEED OUT="$CONC" \
+  CUDA_VISIBLE_DEVICES="" runmt "$HERE/concurrency.jl" || echo "  !! concurrency (CPU) failed; continuing"
+echo "-- concurrency (Table 1): GPU, c=1,2,4, 7 rounds --"
+CASE=both DEVICE=gpu LEVELS=1,2,4 ROUNDS=7 SEED=$SEED OUT="$CONC" \
+  CUDA_VISIBLE_DEVICES="$GPU" runmt "$HERE/concurrency.jl" || echo "  !! concurrency (GPU) failed; continuing"
+python3 "$HERE/summarize_concurrency.py" "$CONC" "$HERE/concurrency.csv" || echo "  !! summarize concurrency failed"
 
 # ---------------------------------------------------------------------------
 # 2) Energy-vs-runtime sweep, solution spread (2 beta sets), cross-transform.

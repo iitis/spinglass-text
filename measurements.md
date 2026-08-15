@@ -21,7 +21,9 @@ claim about this solver needs the interleaved form.
 
 ## Concurrent sweep over the 8 lattice transformations (Table 1)
 
-Speed-up over the serial loop; `c` is the admission limit.
+Speed-up over the serial loop; `c` is the admission limit. Driver:
+`benchmarks/concurrency.jl` (case A = `chim_3_4_3`, SVDTruncate/KingSingleNode, D=16,
+β=2; case B = `128power`, Zipper/SquareSingleNode, D=32, β=3).
 
 | case | device | c=1 | c=2 | c=4 | c=8 | rounds |
 |---|---|---|---|---|---|---|
