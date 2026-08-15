@@ -289,11 +289,12 @@ Table~\ref{tab:cross}.}
 \textbf{When the GPU is worth using.} The original article recommends the GPU for
 its larger examples without qualification. Solving identical configurations on each
 device (Figure~\ref{fig:cross}, Table~\ref{tab:cross}) shows that holds only above a
-threshold easy to fall below: the host is ${\approx}45\times$ faster at 36 spins and still $1.5\times$
-faster at 2048 spins and bond 16, losing only once both instance and bond dimension
-are large --- 2048 spins at bond 32, by 3\% dense and 17\% sparse. Energies agree in
-every cell. Exploratory work therefore belongs on the CPU; the D-Wave-scale sparse
-regime is where the device earns its place.
+threshold easy to fall below: the host is ${\approx}45\times$ faster at 36 spins and still ${\approx}1.5\times$
+faster at 2048 spins and bond 16, and the device overtakes it only in the largest
+sparse case --- 2048 spins at bond 32, where the GPU is ${\approx}1.4\times$ faster;
+the dense case at that size still favours the host by ${\approx}10\%$. Energies agree
+in every cell. Exploratory work therefore belongs on the CPU; the D-Wave-scale sparse
+regime at large bond is where the device earns its place.
 
 \begin{table}[t]
 \small
@@ -301,17 +302,17 @@ regime is where the device earns its place.
 \caption{Data behind Figure~\ref{fig:cross}: host versus device on identical
 configurations, as CPU/GPU wall-clock ratio (below 1 means the CPU is faster). `Zipper', `SquareSingleNode',
 $\beta{=}3$, \texttt{max\_states}${=}128$ throughout; separate alternating
-processes.}
+processes on the H100 server (Intel Xeon Platinum 8462Y+, one NVIDIA H100).}
 \label{tab:cross}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 Spins & $D{=}8$ & $D{=}16$ & $D{=}32$ & $D{=}64$ \\
 \midrule
 36 (dense)     & 0.02 & 0.02 & 0.02 & 0.02 \\
-128 (dense)    & 0.15 & 0.38 & 0.48 & 0.56 \\
-128 (sparse)   & ---  & ---  & ---  & 0.77 \\
-2048 (dense)   & 0.43 & 0.68 & \textbf{1.03} & --- \\
-2048 (sparse)  & ---  & 0.71 & \textbf{1.17} & --- \\
+128 (dense)    & 0.12 & 0.20 & 0.31 & 0.44 \\
+128 (sparse)   & ---  & ---  & ---  & 0.84 \\
+2048 (dense)   & 0.47 & 0.66 & 0.91 & --- \\
+2048 (sparse)  & ---  & 0.76 & \textbf{1.42} & --- \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -142,32 +142,35 @@ separate processes running an identical script gave stable numbers.
 
 ## CPU vs GPU by instance size (crossover study)
 
-Same configuration solved on each device, separate alternating processes, 3 timed
+Same configuration solved on each device, separate alternating processes, 7 timed
 solves per cell (2 for the 2048-spin case), `max_states = 128` fixed so the
 host-side search cost does not confound the device comparison.
-`SquareSingleNode{GaugesEnergy}`, `Dense`, `Zipper`, β = 3.
+`SquareSingleNode{GaugesEnergy}`, `Dense`, `Zipper`, β = 3. Re-run on the 4×H100
+server (Intel Xeon Platinum 8462Y+ + NVIDIA H100); the numbers below (and `crossover.csv`/`crossover_raw.csv`) are that run,
+while the other sections of this file are the original RTX 5080 measurements.
 
 | spins | bond | CPU (s) | GPU (s) | CPU/GPU |
 |---|---|---|---|---|
-| 36 (3×4×3) | 8 | 0.002 | 0.110 | 0.02 |
-| 36 | 16 | 0.002 | 0.113 | 0.02 |
-| 36 | 32 | 0.002 | 0.109 | 0.02 |
-| 36 | 64 | 0.002 | 0.111 | 0.02 |
-| 128 (4×4×8) | 8 | 0.079 | 0.527 | 0.15 |
-| 128 | 16 | 0.161 | 0.420 | 0.38 |
-| 128 | 32 | 0.225 | 0.466 | 0.48 |
-| 128 | 64 | 0.300 | 0.532 | 0.56 |
-| 2048 (16×16×8) | 8 | 10.16 | 23.64 | 0.43 |
-| 2048 | 16 | 14.53 | 21.25 | 0.68 |
+| 36 (3×4×3) | 8 | 0.007 | 0.365 | 0.02 |
+| 36 | 16 | 0.008 | 0.366 | 0.02 |
+| 36 | 32 | 0.007 | 0.361 | 0.02 |
+| 36 | 64 | 0.008 | 0.361 | 0.02 |
+| 128 (4×4×8) | 8 | 0.121 | 1.031 | 0.12 |
+| 128 | 16 | 0.170 | 0.840 | 0.20 |
+| 128 | 32 | 0.263 | 0.858 | 0.31 |
+| 128 | 64 | 0.374 | 0.842 | 0.44 |
+| 2048 (16×16×8) | 8 | 17.08 | 36.03 | 0.47 |
+| 2048 | 16 | 22.07 | 33.28 | 0.66 |
 
 Ratios below 1 mean the host path is faster. Energies agree exactly in every cell
 (−16.4, −210.933334, −3336.773383), so both paths compute the same thing.
 
 **The CPU path is faster in every cell of this bond-16 sweep**, by ~45× at 36 spins
-narrowing to ~1.5× at 2048 spins and bond 16. The ratio rises monotonically with
-both instance size and bond dimension; extending to bond 32 (see `crossover.csv`)
-reaches the crossover — the GPU wins at 2048 spins, bond 32, by 3% dense and 17%
-sparse.
+narrowing to ~1.5× at 2048 spins and bond 16. The ratio rises with both instance
+size and bond dimension; extending to bond 32 (see `crossover.csv`) the device
+overtakes the host only in the largest sparse case — 2048 spins, bond 32, GPU ~1.4×
+faster (ratio 1.42) — while the dense case at that size still favours the host
+(0.91).
 
 Note the direction of the `max_states` bias: the branch-and-bound search is
 host-side on both devices, so a larger `max_states` adds roughly the same absolute
