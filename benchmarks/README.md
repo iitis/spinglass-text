@@ -18,9 +18,10 @@ PKG=../../SpinGlassPEPS.jl GPU=0 SEED=1 ./run_all.sh
 
 `run_all.sh` instantiates/precompiles the package env, runs every driver
 (regenerating the raw + summary CSVs here), and renders the figures into
-`../figures/`. The crossover and allocation numbers are **timings**, so they are
+`../figures/`. The crossover numbers are **timings**, so they are
 measured serially on the single device `GPU=<id>` (clean, uncontended); the other
-cards on a multi-GPU host are left idle. The concurrency step is the one exception —
+cards on a multi-GPU host are left idle. Allocation is reported as bytes
+(hardware-independent), so it needs no such isolation. The concurrency step is the one exception —
 its concurrent arm is launched multi-threaded (`-t auto`; override with `JTHREADS=N`)
 so the per-transformation solves can overlap. Expect a few hours end to end —
 dominated by per-process JIT and the 2048-spin cells; raw CSVs are written
@@ -53,19 +54,22 @@ package's `benchmark/instances/square_50x50/`.
 - **`quality.pdf`** (Fig. 1): `sweep50_cpu.csv`, `div3.csv` + `div3_extra.csv`, `xtransform.csv`.
 - **`crossover.pdf` / Table 2**: `crossover.csv`.
 - **Table 1** (concurrency): `concurrency.csv` — median ratios, hand-filled into the LaTeX table (it is a table, not a figure).
-- **`allocation.pdf`** (Fig. 3): `alloc.csv`.
+- **`allocation.pdf`** (Fig. 3): `alloc.csv` (the `alloc_GiB` rows — the figure is bytes-only).
 
-## Allocation A/B (partly manual)
+## Allocation (bytes-only)
 
-`alloc.jl` profiles **one** code state (tagged by `LABEL`). Figure 3 compares the
-code **before and after** two isolated changes (single-matrix branched-configuration
-set; off-heap contraction temporaries) per device. To regenerate `alloc.csv`, run
-`alloc.jl` on the relevant pre-change commit(s) of `SpinGlassPEPS.jl` with
-`LABEL=before`, and on the current code with `LABEL=after`, then assemble
-`alloc.csv` in the `makefigs` format `change,device,metric,before,after`
-(`change` ∈ {`branch_states`,`temporaries`}, `device` ∈ {`CPU`,`GPU`},
-`metric` ∈ {`wall_s`,`gc_s`,`alloc_GiB`}). `run_all.sh` records the `after` numbers
-in `alloc_raw.csv` and leaves the committed `alloc.csv` in place otherwise.
+Figure 3 reports **allocated bytes** before/after the two changes (single-matrix
+branched-configuration set; off-heap contraction temporaries). Allocated bytes are
+**hardware-independent**: the H100 run reproduces the post-change figures (2048-spin
+bond-32: 32.3 GiB CPU, 24.1 GiB GPU), so no per-device timing A/B is needed.
+
+`alloc.jl` profiles one code state (tagged by `LABEL`); `run_all.sh` records the
+current (`after`) numbers in `alloc_raw.csv`, and `alloc.jl` at `LABEL=before` on a
+pre-change checkout gives the `before`. The committed `alloc.csv` keeps the
+`change,device,metric,before,after` format (`change` ∈ {`branch_states`,`temporaries`},
+`device` ∈ {`CPU`,`GPU`}, `metric` ∈ {`wall_s`,`gc_s`,`alloc_GiB`}); the figure uses
+only the `alloc_GiB` rows. Its `before` figures were measured against earlier code and
+are not driver-regenerated — but being allocated bytes, they do not depend on the host.
 
 The tested hardware/software and the exact commit for each measurement belong in
 `../measurements.md`; pin them to the tagged `v2.0.0` release for a citable run.

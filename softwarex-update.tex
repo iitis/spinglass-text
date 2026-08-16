@@ -54,8 +54,10 @@ report the weight they discard, so a heuristic contraction can state how much of
 distribution it threw away without recourse to an exact oracle, and an
 inverse-temperature ladder with warm-started boundary matrix product states makes
 choosing $\beta$ empirical rather than a guess. Profiling shows the solver is
-host-bound at every size measured, with garbage collection consuming 18--33\% of a
-solve; addressing it with two allocation changes yields up to ${\approx}1.25\times$ (CPU) and ${\approx}1.16\times$ (GPU). We also
+host-bound at every size measured; two changes to the host allocation pattern cut a
+solve's allocated memory --- most sharply the contraction temporaries, down about
+two-thirds (90.9 to 32~GiB on a 2048-spin bond-32 solve), a hardware-independent
+reduction that reproduces on the H100. We also
 establish where GPU execution begins to pay, which is later than the original
 article implies.
 \end{abstract}
@@ -320,37 +322,39 @@ Spins & $D{=}8$ & $D{=}16$ & $D{=}32$ & $D{=}64$ \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/allocation.pdf}
-\caption{What the two allocation changes bought, on a 2048-spin bond-32 solve;
-percentages are the reduction. ``states'' is the matrix-backed branched
-configuration set, ``temp.'' the off-heap contraction temporaries. Note the
-middle and right panels together: the states change cuts allocated \emph{bytes} by
-only 4\% on GPU yet garbage collection by 36\%, because collection cost tracks the
-number of live objects rather than their volume.}
+\caption{Allocated memory before and after the two allocation changes, on a
+2048-spin bond-32 solve; percentages are the reduction. ``states'' is the
+matrix-backed branched configuration set, ``temp.'' the off-heap contraction
+temporaries. The temporaries change removes about two-thirds of the CPU heap; the
+states change is small in \emph{bytes} because its benefit is a reduced live-object
+count rather than volume. Allocated bytes are hardware-independent --- the H100 run
+reproduces the post-change figures (32.3~GiB CPU, 24.1~GiB GPU).}
 \label{fig:alloc}
 \end{figure}
 
 \textbf{Where the time actually goes.} Profiling explains both tables and
-redirects the obvious optimizations. The device is never the constraint: GPU
-utilization is 5.9\% on a 128-spin solve and 12.8\% at 2048 spins, while host-side
-CUDA API calls account for only 21--25\% of wall time. The remaining two thirds is
-host-side Julia work, of which garbage collection alone is 18\% (GPU) to 33\% (CPU)
-of a 2048-spin solve. The solver is host-bound at every size we measured --- which
-is also why the two devices tie at the crossover: both are waiting on the same
-bookkeeping, and the device's tensor work is nearly free but removes none of it.
+redirects the obvious optimizations. The device is never the constraint: on a
+profiled 128-spin solve, host-side CUDA API calls account for only about a quarter
+of wall time and the majority is host-side Julia work. The solver is host-bound at
+every size we measured --- which is why the CPU stays competitive with the device
+across the crossover, the tensor work being nearly free but removing none of the
+bookkeeping.
 
 An idle device invites kernel-level batching, and we did not pursue it for a reason
-worth recording. Eliminating the entire CUDA API share would cap at
-${\approx}1.3\times$, whereas the host-side majority was reachable directly. Two
-allocation changes follow (Figure~\ref{fig:alloc}). The branched-configuration set is now backed by a single
-matrix rather than one vector per state, which on a 2048-spin bond-32 solve is
-$1.16\times$ end to end with garbage collection down 36\% --- while allocated
-\emph{bytes} fall only 4\%, since collection cost tracks the number of live objects
-rather than their volume, and the previous form created tens of thousands of small
-vectors per call. Separately, the multi-tensor contraction temporaries were moved off
-the collected heap onto explicit allocation, worth $1.25\times$ on CPU with allocated
-bytes down by two thirds; in isolation that allocator is ${\approx}7\%$ \emph{slower}
-per call, so the gain is entirely the collection it avoids and had to be measured in
-a full solve rather than a microbenchmark.
+worth recording: eliminating the entire CUDA API share would cap at
+${\approx}1.3\times$, whereas the host allocation load was reachable directly. A
+single line, \texttt{branch\_states} in the branch-and-bound search, accounted for
+52.7\% of the bytes a solve allocated; two changes follow
+(Figure~\ref{fig:alloc}). The branched-configuration set is now backed by a single
+matrix rather than tens of thousands of small vectors per call, cutting the number
+of live objects sharply --- its allocated \emph{bytes} fall only ${\approx}4\%$ on
+the large solve, but the object count that drives collection falls far more.
+Separately, the multi-tensor contraction temporaries were moved off the collected
+heap onto explicit allocation, cutting a 2048-spin bond-32 solve's allocated bytes
+by about two thirds (90.9 to 32~GiB on CPU). Both reductions are hardware-independent
+--- the H100 run reproduces the post-change figures --- and both were measured in a
+full solve, since the explicit allocator is no faster in isolation and pays only
+through the allocations it removes from the collected heap.
 
 \textbf{Impact, limitations and outlook.} Contraction error is now an observable
 rather than an article of faith, letting a practitioner distinguish a converged run
@@ -358,7 +362,7 @@ from a broken one on a problem where no exact answer is available --- the regime
 method exists for --- provided it is read as a statement about the contraction and
 not about solution quality. The consolidation and the deprecation shims make the
 published interface reproducible, and shipping the benchmark instances closes a gap
-in that reproducibility that predates this update. The raw per-run data and figure scripts behind every figure and table, together with the drivers for the crossover, concurrency, diversity, and energy-vs-runtime results, are provided with the manuscript sources in the \texttt{benchmarks/} directory; only the allocation before/after profile still requires a manual pre-change build, documented there.
+in that reproducibility that predates this update. The raw per-run data and figure scripts behind every figure and table, together with the drivers for the crossover, concurrency, diversity, and energy-vs-runtime results, are provided with the manuscript sources in the \texttt{benchmarks/} directory; the allocation figure reports allocated bytes, which are hardware-independent and whose post-change values the H100 run reproduces.
 
 The limitations are equally plain. Warm starting and the
 discarded-weight measure cannot be combined, and warm starting currently covers only

@@ -253,33 +253,32 @@ def figure_crossover():
 # Figure 3 -- what the allocation changes bought
 # --------------------------------------------------------------------------
 def figure_alloc():
+    # Bytes only: allocated GiB is hardware-independent (the H100 run reproduces the
+    # post-change figures). Wall/GC timings are dev-machine specific and not plotted.
     rows = load("alloc.csv")
     groups = [("branch_states", "GPU", r"states"),
               ("branch_states", "CPU", r"states"),
               ("temporaries", "CPU", r"temp.")]
-    metrics = [("wall_s", r"wall time [s]"), ("gc_s", r"GC time [s]"),
-               ("alloc_GiB", r"allocated [GiB]")]
-    fig, axes = plt.subplots(1, 3, figsize=(6.9, 2.2))
+    fig, ax = plt.subplots(1, 1, figsize=(3.4, 2.4))
     labels = [rf"{g[2]}" + "\n" + rf"{g[1]}" for g in groups]
     xs = range(len(groups))
-    for ax, (metric, title) in zip(axes, metrics):
-        before, after = [], []
-        for change, dev, _ in groups:
-            r = next(x for x in rows if x["change"] == change and x["device"] == dev
-                     and x["metric"] == metric)
-            before.append(float(r["before"])); after.append(float(r["after"]))
-        w = 0.36
-        ax.bar([x - w / 2 for x in xs], before, w, color="0.72", label=r"before")
-        ax.bar([x + w / 2 for x in xs], after, w, color=SEQ[3], label=r"after")
-        for x, (b, a) in enumerate(zip(before, after)):
-            ax.annotate(rf"$-{100*(b-a)/b:.0f}\%$", (x + w / 2, a), textcoords="offset points",
-                        xytext=(0, 2), ha="center", fontsize=6, color=SEQ[3])
-        ax.set_xticks(list(xs)); ax.set_xticklabels(labels, fontsize=7)
-        ax.set_title(title, loc="left")
-        ax.grid(alpha=0.25, axis="y")
-        ax.set_axisbelow(True)
-    axes[0].legend(loc="upper right", handletextpad=0.4)
-    fig.tight_layout(pad=0.4, w_pad=1.2)
+    before, after = [], []
+    for change, dev, _ in groups:
+        r = next(x for x in rows if x["change"] == change and x["device"] == dev
+                 and x["metric"] == "alloc_GiB")
+        before.append(float(r["before"])); after.append(float(r["after"]))
+    w = 0.36
+    ax.bar([x - w / 2 for x in xs], before, w, color="0.72", label=r"before")
+    ax.bar([x + w / 2 for x in xs], after, w, color=SEQ[3], label=r"after")
+    for x, (b, a) in enumerate(zip(before, after)):
+        ax.annotate(rf"$-{100*(b-a)/b:.0f}\%$", (x + w / 2, a), textcoords="offset points",
+                    xytext=(0, 2), ha="center", fontsize=6, color=SEQ[3])
+    ax.set_xticks(list(xs)); ax.set_xticklabels(labels, fontsize=7)
+    ax.set_title(r"allocated [GiB]", loc="left")
+    ax.grid(alpha=0.25, axis="y")
+    ax.set_axisbelow(True)
+    ax.legend(loc="upper right", handletextpad=0.4)
+    fig.tight_layout(pad=0.4)
     save(fig, "allocation")
 
 

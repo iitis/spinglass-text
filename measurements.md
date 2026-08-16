@@ -140,7 +140,11 @@ Alternating separate-process paired runs, 5 timed solves each, medians:
 | CPU | new | 0.3169 s (**1.13×**) | 1.1940 GiB (**−12.0%**) |
 
 Energies identical. The GPU wall-time gain is real but noisy (the old arm spans
-1.048–1.129 s); the allocation figures are deterministic.
+1.048–1.129 s); the allocation figures are deterministic. The allocated-byte
+reductions are hardware-independent — the H100 run reproduces the post-change figures
+behind Figure 3 (2048-spin bond-32: 32.3 GiB CPU, 24.1 GiB GPU). The manuscript now
+reports the allocation result as bytes only; the wall/GC timings above are the
+RTX 5080 dev machine and are not claimed for the H100.
 
 Two measurement traps encountered here, recorded so they are not repeated: an
 in-process A/B that redefines a method with `@eval` inside the running function

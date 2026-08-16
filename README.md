@@ -95,8 +95,8 @@ Deliberately out of scope, and listed here so they are not forgotten:
   remaining allocation work would matter most.
 
 **Kernel-level batching across transformations was investigated and dropped**, and
-the manuscript says so rather than listing it as future work. The device does sit
-~90% idle, but host-side CUDA API calls account for only 21–25% of wall time, so
-eliminating them entirely caps at ≈1.3×; two thirds of a solve is host-side Julia
+the manuscript says so rather than listing it as future work. The device sits mostly
+idle, but host-side CUDA API calls account for only about a quarter of wall time, so
+eliminating them entirely caps at ≈1.3×; the majority of a solve is host-side Julia
 work. Reducing allocation returned more, for far less effort. Recorded here because
 "batch the kernels" is the intuitive next step and the measurements say otherwise.
