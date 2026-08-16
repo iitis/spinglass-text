@@ -1,0 +1,5 @@
+case,device,c1,c2,c4,c8,rounds
+128power_D32_zipper,cpu,0.89,1.11,1.31,1.64,5
+128power_D32_zipper,gpu,0.83,1.22,1.43,,7
+chim_3_4_3_D16_svd,cpu,0.88,1.41,2.14,3.09,5
+chim_3_4_3_D16_svd,gpu,0.91,1.69,1.44,,7
