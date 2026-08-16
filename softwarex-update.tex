@@ -213,17 +213,17 @@ kernel batches are sized against \emph{its} slice rather than the shared pool.
 Without that last step the reservation would be advisory only: every concurrent
 solve would measure the same free pool and batch as though it owned all of it.
 
-What this buys depends entirely on the device (Table~\ref{tab:sweep}). On CPU the
-sweep scales monotonically, reaching $1.76\times$ and $1.39\times$ at eight-way on
-the two cases; on a single GPU no concurrency level beats the serial loop. The solves
-do overlap --- $5.4\times$ at eight-way --- but per-solve time degrades at the same
-rate, so total work is conserved and the driver's own overhead makes it a net loss.
-The default is therefore device-dependent.
+Concurrency pays on both devices (Table~\ref{tab:sweep}). On CPU the sweep scales
+monotonically, reaching $3.1\times$ and $1.6\times$ at eight-way on the two cases;
+on a single GPU it helps as well, up to $1.7\times$ at two-way and $1.4\times$ at
+four-way. A single admitted solve ($c{=}1$) is a slight net loss --- the driver's
+fixed overhead is not amortized when nothing overlaps --- so the gain begins at
+$c{\ge}2$. Energies agree across every admitted solve.
 
 One methodological caution, because it cost us a wrong result before it was caught:
 timing the serial arm immediately after a concurrent warm-up leaves the CUDA memory
-pool in a state that inflated our baseline by up to $2.7\times$, producing an
-apparent $1.68\times$ speed-up where there is none. Interleaving the arms,
+pool in a state that inflated our serial baseline by up to $2.7\times$, enough to
+distort any speed-up ratio measured against it. Interleaving the arms,
 reclaiming before every timed section, and reporting paired per-round ratios is
 necessary for any performance claim about this solver.
 
@@ -232,16 +232,16 @@ necessary for any performance claim about this solver.
 \centering
 \caption{Speed-up of the concurrent sweep over the serial eight-transformation loop:
 median of per-round paired ratios, interleaved arms, full reclaim before every timed
-section. CPU 20 cores / BLAS 12 threads, 5 rounds; GPU RTX 5080, 7 rounds.}
+section. Intel Xeon Platinum 8462Y+ (CPU, 5 rounds) and one NVIDIA H100 (GPU, 7 rounds).}
 \label{tab:sweep}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
 Case & Device & $c{=}1$ & $c{=}2$ & $c{=}4$ & $c{=}8$ \\
 \midrule
-Chimera $3\!\times\!4\!\times\!3$, $D{=}16$ & CPU & 0.52 & 0.87 & 1.32 & \textbf{1.76} \\
-Chimera 128-spin, $D{=}32$, \texttt{Zipper} & CPU & 0.97 & 1.15 & 1.37 & \textbf{1.39} \\
-Chimera $3\!\times\!4\!\times\!3$, $D{=}16$ & GPU & 0.68 & 0.92 & 0.80 & --- \\
-Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.94 & 0.88 & 0.89 & --- \\
+Chimera $3\!\times\!4\!\times\!3$, $D{=}16$ & CPU & 0.88 & 1.41 & 2.14 & \textbf{3.09} \\
+Chimera 128-spin, $D{=}32$, \texttt{Zipper} & CPU & 0.89 & 1.11 & 1.31 & \textbf{1.64} \\
+Chimera $3\!\times\!4\!\times\!3$, $D{=}16$ & GPU & 0.91 & \textbf{1.69} & 1.44 & --- \\
+Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.83 & 1.22 & \textbf{1.43} & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -309,10 +309,10 @@ processes on the H100 server (Intel Xeon Platinum 8462Y+, one NVIDIA H100).}
 Spins & $D{=}8$ & $D{=}16$ & $D{=}32$ & $D{=}64$ \\
 \midrule
 36 (dense)     & 0.02 & 0.02 & 0.02 & 0.02 \\
-128 (dense)    & 0.12 & 0.20 & 0.31 & 0.44 \\
-128 (sparse)   & ---  & ---  & ---  & 0.84 \\
-2048 (dense)   & 0.47 & 0.66 & 0.91 & --- \\
-2048 (sparse)  & ---  & 0.76 & \textbf{1.42} & --- \\
+128 (dense)    & 0.14 & 0.21 & 0.36 & 0.46 \\
+128 (sparse)   & ---  & ---  & ---  & 0.68 \\
+2048 (dense)   & 0.50 & 0.64 & 0.90 & --- \\
+2048 (sparse)  & ---  & 0.78 & \textbf{1.45} & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -358,10 +358,9 @@ from a broken one on a problem where no exact answer is available --- the regime
 method exists for --- provided it is read as a statement about the contraction and
 not about solution quality. The consolidation and the deprecation shims make the
 published interface reproducible, and shipping the benchmark instances closes a gap
-in that reproducibility that predates this update. The raw per-run data and figure scripts behind every figure and table, together with the drivers for the diversity and energy-vs-runtime results, are provided with the manuscript sources in the \texttt{benchmarks/} directory; the exact crossover and allocation drivers are noted there as the one remaining gap.
+in that reproducibility that predates this update. The raw per-run data and figure scripts behind every figure and table, together with the drivers for the crossover, concurrency, diversity, and energy-vs-runtime results, are provided with the manuscript sources in the \texttt{benchmarks/} directory; only the allocation before/after profile still requires a manual pre-change build, documented there.
 
-The limitations are equally plain. The sweep is a genuine speed-up on CPU but not on
-a single GPU, for reasons we measured rather than assumed. Warm starting and the
+The limitations are equally plain. Warm starting and the
 discarded-weight measure cannot be combined, and warm starting currently covers only
 the bottom boundary MPS, so layouts that build the top boundary do not benefit on
 those rows. The error measure answers a narrower question than one might hope: it

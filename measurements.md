@@ -1,8 +1,11 @@
 # Provenance for the numbers in the manuscript
 
-Hardware: 20 CPU cores, BLAS on 12 threads, NVIDIA GeForce RTX 5080 (15.5 GiB),
-Julia 1.12.3, CUDA.jl 5.11.1. Repository at `lp/monorepo`, base commit `a07a54c`
-plus the update described here.
+Hardware (base measurements): 20 CPU cores, BLAS on 12 threads, NVIDIA GeForce
+RTX 5080 (15.5 GiB), Julia 1.12.3, CUDA.jl 5.11.1. Repository at `lp/monorepo`,
+base commit `a07a54c` plus the update described here. The concurrency sweep
+(Table 1) and the crossover study (Table 2) were re-benchmarked on a 4×H100 server
+(Intel Xeon Platinum 8462Y+ + one NVIDIA H100); all other sections are the RTX 5080
+measurements.
 
 ## Protocol (important)
 
@@ -16,38 +19,41 @@ all serial repetitions, then all concurrent ones — gave a serial baseline vary
 between 3.07 s and 5.76 s for identical work on one case, and 14.3 s versus 38.8 s
 on another (2.7×), because whatever ran immediately before left the CUDA memory
 pool in a different state. That protocol produced an apparent 1.68× / 1.06×
-speed-up where the corrected protocol shows 0.92× / 0.88×. Any future performance
+speed-up on the RTX 5080 where the corrected protocol showed 0.92× / 0.88×. Any future performance
 claim about this solver needs the interleaved form.
 
 ## Concurrent sweep over the 8 lattice transformations (Table 1)
 
 Speed-up over the serial loop; `c` is the admission limit. Driver:
 `benchmarks/concurrency.jl` (case A = `chim_3_4_3`, SVDTruncate/KingSingleNode, D=16,
-β=2; case B = `128power`, Zipper/SquareSingleNode, D=32, β=3).
+β=2; case B = `128power`, Zipper/SquareSingleNode, D=32, β=3). Re-run on the 4×H100
+server (Intel Xeon Platinum 8462Y+ + one NVIDIA H100), like the crossover section.
 
 | case | device | c=1 | c=2 | c=4 | c=8 | rounds |
 |---|---|---|---|---|---|---|
-| Chimera 3×4×3, D=16, `SVDTruncate`/`Dense` | CPU | 0.52 | 0.87 | 1.32 | **1.76** | 5 |
-| Chimera 128power, D=32, `Zipper`/`Dense` | CPU | 0.97 | 1.15 | 1.37 | **1.39** | 5 |
-| Chimera 3×4×3, D=16, `SVDTruncate`/`Dense` | GPU | 0.68 | 0.92 | 0.80 | — | 7 |
-| Chimera 128power, D=32, `Zipper`/`Dense` | GPU | 0.94 | 0.88 | 0.89 | — | 7 |
+| Chimera 3×4×3, D=16, `SVDTruncate`/`Dense` | CPU | 0.88 | 1.41 | 2.14 | **3.09** | 5 |
+| Chimera 128power, D=32, `Zipper`/`Dense` | CPU | 0.89 | 1.11 | 1.31 | **1.64** | 5 |
+| Chimera 3×4×3, D=16, `SVDTruncate`/`Dense` | GPU | 0.91 | **1.69** | 1.44 | — | 7 |
+| Chimera 128power, D=32, `Zipper`/`Dense` | GPU | 0.83 | 1.22 | **1.43** | — | 7 |
 
-Serial medians: CPU 0.07 s and 4.16 s; GPU 3.97 s and 14.30 s.
+Serial medians: CPU 0.04 s and 16.0 s; GPU 1.38 s and 18.18 s.
 
-Paired ratio ranges (GPU, `c=2`): 0.80–1.16 and 0.85–1.05. CPU `c=8`: 1.45–3.0 and
-1.31–1.96.
+Paired ratio ranges (GPU, `c=2`): 1.55–1.90 and 1.19–1.26. CPU `c=8`: 2.97–3.12 and
+1.60–1.81.
 
-### Why GPU concurrency does not pay
+### GPU concurrency on the H100
 
-- Overlap *does* occur: Σ(per-solve wall time) / total = 5.23× and 5.43× at c=8.
-  Per-solve time degrades at the same rate, so total work is conserved.
-- GPU utilization ~10% during the sweep (`nvidia-smi`), so the device is not
-  saturated.
-- Holding c=8 and varying only the BLAS thread policy: total 9.40 s (divided,
-  default) / 8.61 s (full per solve) / 9.82 s (single). ≤10% spread, so BLAS
-  oversubscription is not the cause. GC share 7–10% versus 3% serial.
-- Conclusion: serialization in the CUDA API/allocator, which this solver provokes
-  with many small kernels.
+On the H100 the per-transformation solves overlap effectively and the concurrent
+sweep is faster on the GPU too: 1.69×/1.44× at c=2/c=4 on the 3×4×3 case and
+1.22×/1.43× on 128power (Table 1). The benefit begins at c=2; a single admitted
+solve (c=1) is a slight net loss from the driver's fixed overhead. Energies agree
+across every admitted solve.
+
+The consumer RTX 5080 behaved oppositely — fanning out over that smaller device
+never beat the serial loop (all levels 0.68–0.94×; ~10% utilization, the limit
+being serialization in the CUDA API/allocator with this solver's many small
+kernels). That is why the package keeps `concurrency = :auto` at 1 on any GPU and
+asks for an explicit setting on large devices.
 
 ## Device-memory governor
 
@@ -148,21 +154,22 @@ Same configuration solved on each device, separate alternating processes, 7 time
 solves per cell (2 for the 2048-spin case), `max_states = 128` fixed so the
 host-side search cost does not confound the device comparison.
 `SquareSingleNode{GaugesEnergy}`, `Dense`, `Zipper`, β = 3. Re-run on the 4×H100
-server (Intel Xeon Platinum 8462Y+ + NVIDIA H100); the numbers below (and `crossover.csv`/`crossover_raw.csv`) are that run,
-while the other sections of this file are the original RTX 5080 measurements.
+server (Intel Xeon Platinum 8462Y+ + NVIDIA H100); the numbers below (and `crossover.csv`/`crossover_raw.csv`) are that run — as is the
+concurrency sweep (Table 1) above — while the remaining sections of this file are
+the original RTX 5080 measurements.
 
 | spins | bond | CPU (s) | GPU (s) | CPU/GPU |
 |---|---|---|---|---|
-| 36 (3×4×3) | 8 | 0.007 | 0.365 | 0.02 |
-| 36 | 16 | 0.008 | 0.366 | 0.02 |
-| 36 | 32 | 0.007 | 0.361 | 0.02 |
-| 36 | 64 | 0.008 | 0.361 | 0.02 |
-| 128 (4×4×8) | 8 | 0.121 | 1.031 | 0.12 |
-| 128 | 16 | 0.170 | 0.840 | 0.20 |
-| 128 | 32 | 0.263 | 0.858 | 0.31 |
-| 128 | 64 | 0.374 | 0.842 | 0.44 |
-| 2048 (16×16×8) | 8 | 17.08 | 36.03 | 0.47 |
-| 2048 | 16 | 22.07 | 33.28 | 0.66 |
+| 36 (3×4×3) | 8 | 0.008 | 0.360 | 0.02 |
+| 36 | 16 | 0.008 | 0.370 | 0.02 |
+| 36 | 32 | 0.008 | 0.370 | 0.02 |
+| 36 | 64 | 0.008 | 0.369 | 0.02 |
+| 128 (4×4×8) | 8 | 0.146 | 1.018 | 0.14 |
+| 128 | 16 | 0.163 | 0.770 | 0.21 |
+| 128 | 32 | 0.318 | 0.877 | 0.36 |
+| 128 | 64 | 0.399 | 0.865 | 0.46 |
+| 2048 (16×16×8) | 8 | 18.09 | 36.36 | 0.50 |
+| 2048 | 16 | 21.73 | 34.21 | 0.64 |
 
 Ratios below 1 mean the host path is faster. Energies agree exactly in every cell
 (−16.4, −210.933334, −3336.773383), so both paths compute the same thing.
@@ -171,8 +178,8 @@ Ratios below 1 mean the host path is faster. Energies agree exactly in every cel
 narrowing to ~1.5× at 2048 spins and bond 16. The ratio rises with both instance
 size and bond dimension; extending to bond 32 (see `crossover.csv`) the device
 overtakes the host only in the largest sparse case — 2048 spins, bond 32, GPU ~1.4×
-faster (ratio 1.42) — while the dense case at that size still favours the host
-(0.91).
+faster (ratio 1.45) — while the dense case at that size still favours the host
+(0.90).
 
 Note the direction of the `max_states` bias: the branch-and-bound search is
 host-side on both devices, so a larger `max_states` adds roughly the same absolute
@@ -180,7 +187,7 @@ time to both arms and pushes the ratio toward 1 *without* the device doing the
 tensor work any better. Holding it at 128 therefore isolates the device-sensitive
 part rather than flattering either arm.
 
-Caveats: one consumer GPU (RTX 5080); `Dense` only in the table above (the
+Caveats: one datacenter GPU (single H100); `Dense` only in the table above (the
 `Sparse` path, which Pegasus and Zephyr use and whose kernels are batched
 differently, is measured separately); one geometry and strategy.
 
