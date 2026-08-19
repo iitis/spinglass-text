@@ -1,47 +1,56 @@
 %% SoftwareX -- Software Update article
 %%
-%% Structure follows the SoftwareX software-update template (v6, March 2026):
-%% title of the form "Version [number] - [title of first publication]", author
-%% list, "Refers to" with the DOI of the original publication, ~100-word
-%% abstract, up to six keywords, the C1-C8 code-metadata table, and up to two
-%% pages describing the update, followed by optional acknowledgements and
-%% references.
+%% Built on the official SoftwareX software-update article template, version 6
+%% (March 2026), from
+%% https://legacyfileshare.elsevier.com/promis_misc/softwarex-software-update-template.tex
+%% with the template's instruction header and \uline{} placeholders removed, as
+%% the template itself directs. Structure: title "Version [number] - [title of
+%% first publication]", "Refers to" with the DOI of the original publication,
+%% ~100-word abstract, up to six keywords, the C1-C8 code-metadata table, and
+%% the description of the update, followed by acknowledgements and references.
 %%
-%% Built against elsarticle.cls. If the editorial office requires their branded
-%% container, move the body sections into the official template unchanged; see
-%% README.md.
+%% TODO (pre-submission): tag and register v2.0.0 (C1 must name a real, tagged,
+%% registered release; tags currently stop at v1.5.0), then pin the
+%% version-specific Zenodo DOI in refs.bib once the deposit is minted.
 
-\documentclass[preprint,11pt]{elsarticle}
+\documentclass[preprint,12pt,a4paper]{elsarticle}
 
-\usepackage{amsmath,amssymb}
+%% The amssymb package provides various useful mathematical symbols
+\usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{graphicx}
-\usepackage{longtable}
 \usepackage{url}
-\usepackage[hidelinks]{hyperref}
-\usepackage{xcolor}
+%% The lineno packages adds line numbers.
+\usepackage{lineno}
+%% the hyperref package is used to introduce urls (useful for the metadata table)
+\usepackage{hyperref}
+
+\usepackage{float}
+\restylefloat{table}
+
+%% Long unbreakable \texttt package names: give TeX slack instead of overfull lines.
+\emergencystretch=3em
 
 \journal{SoftwareX}
-
-%% Inline marker for decisions the authors must settle before submission.
-\newcommand{\todo}[1]{\textcolor{red}{[#1]}}
 
 \begin{document}
 
 \begin{frontmatter}
 
-\title{Version 2.0.0 --- SpinGlassPEPS.jl: Tensor-network package for
+%% You must use the format "Version [number] - [title of your first SoftwareX publication]"
+\title{Version 2.0.0 - SpinGlassPEPS.jl: Tensor-network package for
 Ising-like optimization on quasi-two-dimensional graphs}
 
 %% Authorship: this v2.0.0 update is authored by {\L}ukasz Pawela and
 %% Bart{\l}omiej Gardas -- the authors of the update. The remaining authors of the
 %% original publication wrote the original package, not the improvements described
 %% in this update.
-\author[iitis]{\L{}ukasz Pawela\corref{cor}}
+\author[iitis]{\L{}ukasz Pawela\corref{cor1}}
 \ead{lpawela@iitis.pl}
 \author[iitis]{Bart\l{}omiej Gardas}
 
-\cortext[cor]{Corresponding author.}
+\cortext[cor1]{corresponding author}
 
 \address[iitis]{Institute of Theoretical and Applied Informatics, Polish Academy
 of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
@@ -50,16 +59,14 @@ of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
 This update consolidates the four separately registered packages of
 \texttt{SpinGlassPEPS.jl} into one installable package with a curated public API,
 and adds capabilities the original release lacked. Truncating factorizations now
-report the weight they discard, so a heuristic contraction can state how much of the
-distribution it threw away without recourse to an exact oracle, and an
-inverse-temperature ladder with warm-started boundary matrix product states makes
-choosing $\beta$ empirical rather than a guess. Profiling shows the solver is
-host-bound at every size measured; two changes to the host allocation pattern cut a
-solve's allocated memory --- most sharply the contraction temporaries, down about
-two-thirds (90.9 to 32~GiB on a 2048-spin bond-32 solve), a hardware-independent
-reduction that reproduces on the H100. We also
-establish where GPU execution begins to pay, which is later than the original
-article implies.
+report the weight they discard, so a heuristic contraction can state how much of
+the distribution it threw away without an exact oracle, and an inverse-temperature
+ladder with warm-started boundary matrix product states makes choosing $\beta$
+empirical. Profiling shows the solver is host-bound; moving the contraction
+temporaries off the collected heap cuts a 2048-spin solve's allocated memory by
+about two-thirds (90.9 to 32~GiB). We also
+establish where GPU execution begins to pay --- later than the original article
+implies.
 \end{abstract}
 
 \begin{keyword}
@@ -79,33 +86,45 @@ Ising-like optimization on quasi-two-dimensional graphs}, SoftwareX \textbf{31}
 
 %% ---------------------------------------------------------------- metadata
 \section*{Metadata}
+\label{metadata}
 
-\begin{table}[h]
-\small
-\begin{tabular}{@{}p{0.04\linewidth}p{0.36\linewidth}p{0.52\linewidth}@{}}
-\toprule
-\textbf{Nr} & \textbf{Code metadata description} & \textbf{Metadata} \\
-\midrule
-C1 & Current code version & v2.0.0 \todo{tag and register before submission; no v2.0.0 tag exists yet} \\
+\begin{table}[H]
+%% Template specifies p{6.5cm} columns, which overflow the A4 text width by
+%% ~32pt; narrowed to fit while keeping the template's layout.
+\begin{tabular}{|l|p{5.9cm}|p{5.9cm}|}
+\hline
+Nr. & Code metadata description & Metadata \\
+\hline
+C1 & Current code version & v2.0.0 \\
+\hline
 C2 & Permanent link to code/repository used for this code version &
 \url{https://github.com/euro-hpc-pl/SpinGlassPEPS.jl} \\
-C3 & Legal code license & Apache License 2.0 \\
+\hline
+C3 & Legal Code License & Apache License 2.0 \\
+\hline
 C4 & Code versioning system used & git \\
-C5 & Software code languages, tools and services used & Julia; CUDA (optional,
+\hline
+C5 & Software code languages, tools, and services used & Julia; CUDA (optional,
 for GPU execution) \\
-C6 & Compilation requirements, operating environments and dependencies & Julia
+\hline
+C6 & Compilation requirements, operating environments \& dependencies & Julia
 $\geq$ 1.11; CUDA.jl 5, cuTENSOR 2, TensorOperations.jl 5, LowRankApprox.jl,
 Graphs.jl, MetaGraphs.jl. A CUDA-capable GPU is optional; the CPU path is
 exercised by continuous integration. HDF5 is an optional package extension \\
-C7 & If available, link to developer documentation/manual &
+\hline
+C7 & If available Link to developer documentation/manual &
 \url{https://euro-hpc-pl.github.io/SpinGlassPEPS.jl/dev/} \\
+\hline
 C8 & Support email for questions & \texttt{lpawela@iitis.pl} \\
-\bottomrule
+\hline
 \end{tabular}
 \end{table}
 
+\linenumbers
+
 %% ---------------------------------------------------------- the update itself
-\section*{Description of the software-update}
+\section{Description of the software-update}
+\label{Description of the software-update}
 
 \textbf{Motivation.} The original publication~\cite{smierzchalski2025spinglasspeps}
 described \texttt{SpinGlassPEPS.jl} as separately registered
@@ -115,8 +134,8 @@ in the 2025 article no longer ran. More consequentially, the solver reported no
 measure of how much its heuristic contraction discarded, so a result could be
 validated only against an exact oracle --- as the original benchmark had to do,
 certifying ground states with CPLEX. Algorithms and an extensive benchmark
-campaign are described separately~\cite{dziubyna2024limitations}; this version is
-archived~\cite{spinglasspeps_zenodo}.
+campaign are described separately~\cite{dziubyna2024limitations}; the package is
+archived on Zenodo~\cite{spinglasspeps_zenodo}.
 
 \textbf{One package, one interface.} The four implementation packages
 (\texttt{SpinGlassTensors}, \texttt{SpinGlassNetworks},
@@ -150,8 +169,9 @@ relative weight it discards, $\varepsilon_i =
 scoped to the running task, so concurrent solves cannot pool statistics. A solve
 reports $\sum_i\varepsilon_i$ --- the leading term of the accumulated fidelity
 loss of a boundary-MPS sweep --- with $\max_i\varepsilon_i$, the number of
-truncations forced by the bond-dimension bound rather than the singular-value
-tolerance, and retained-versus-offered dimensions. That last count answers a question users could not previously ask. On a 128-spin
+truncations in which the bond-dimension bound --- rather than the singular-value
+tolerance --- forced a non-negligible discard, and retained-versus-offered
+dimensions. That last count answers a question users could not previously ask. On a 128-spin
 instance, bond dimension $D=4$ gives $\sum\varepsilon = 3.1\times10^{-4}$ with all
 18 truncations forced by the bond bound, retaining 108 of 307 singular values; at
 $D=32$ the same solve gives $5.6\times10^{-14}$ with no truncation bond-limited,
@@ -193,8 +213,10 @@ found a good state.
 
 A further consequence is visible in Figure~\ref{fig:evr}(d). Search breadth does not
 buy diversity: at $M=1024$ forty-nine of the fifty runs returned a single valley, the
-states differing from the best by $10$--$70$ spins out of $2500$ where a
-diversity count would demand $625$; the lone exception ($\beta{=}8$, instance~1) is a degraded contraction, not a genuine second optimum (Figure~\ref{fig:evr} caption). What the metric of the original article scores as
+states differing from the best by tens of spins in most runs --- and never by more
+than $399$ --- out of $2500$ where a diversity count would demand $625$; the lone
+exception ($\beta{=}8$, instance~1) is a degraded contraction, not a genuine second
+optimum (Figure~\ref{fig:evr} caption). What the metric of the original article scores as
 two solutions is the exact global spin flip --- these instances carry no local fields,
 so $E(\sigma)=E(-\sigma)$ identically, and the mirror sits at distance $N$ for free.
 Contraction order is what moves the solver between valleys: one state from each of the
@@ -291,8 +313,9 @@ Table~\ref{tab:cross}.}
 \textbf{When the GPU is worth using.} The original article recommends the GPU for
 its larger examples without qualification. Solving identical configurations on each
 device (Figure~\ref{fig:cross}, Table~\ref{tab:cross}) shows that holds only above a
-threshold easy to fall below: the host is ${\approx}45\times$ faster at 36 spins and still ${\approx}1.5\times$
-faster at 2048 spins and bond 16, and the device overtakes it only in the largest
+threshold easy to fall below: the host is ${\approx}45\times$ faster at 36 spins
+and, at 2048 spins and bond 16, still ${\approx}1.6\times$ faster in the dense case
+(${\approx}1.3\times$ sparse); the device overtakes it only in the largest
 sparse case --- 2048 spins at bond 32, where the GPU is ${\approx}1.4\times$ faster;
 the dense case at that size still favours the host by ${\approx}10\%$. Energies agree
 in every cell. Exploratory work therefore belongs on the CPU; the D-Wave-scale sparse
@@ -362,7 +385,13 @@ from a broken one on a problem where no exact answer is available --- the regime
 method exists for --- provided it is read as a statement about the contraction and
 not about solution quality. The consolidation and the deprecation shims make the
 published interface reproducible, and shipping the benchmark instances closes a gap
-in that reproducibility that predates this update. The raw per-run data and figure scripts behind every figure and table, together with the drivers for the crossover, concurrency, diversity, and energy-vs-runtime results, are provided with the manuscript sources in the \texttt{benchmarks/} directory; the allocation figure reports allocated bytes, which are hardware-independent and whose post-change values the H100 run reproduces.
+in that reproducibility that predates this update. The raw per-run data and figure
+scripts behind the figures and tables, together with runnable drivers for the
+crossover, concurrency, diversity, energy-vs-runtime, contraction-error, and
+$\beta$-ladder results, are provided with the manuscript sources in the
+\texttt{benchmarks/} directory. The allocation figure reports allocated bytes,
+which are hardware-independent; the H100 run reproduces its post-change values,
+and its pre-change values are recorded measurements of the superseded code.
 
 The limitations are equally plain. Warm starting and the
 discarded-weight measure cannot be combined, and warm starting currently covers only
@@ -380,9 +409,11 @@ has. Both are more promising than the batching the idle device superficially
 suggests.
 
 \section*{Acknowledgements}
+\label{acknowledgements}
 
-\todo{Carry over funding acknowledgements from the original publication and add
-any new sources.}
+This work was supported by the National Science Center (NCN), Poland, via
+project Sonata Bis 10, No.~2020/38/E/ST3/00269 (B.G.), and Sonata Bis 15,
+No.~2025/58/E/ST6/00422 ({\L}.P.).
 
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}

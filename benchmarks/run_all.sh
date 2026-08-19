@@ -95,6 +95,21 @@ OUT="$HERE/xtransform.csv" NINST=5 CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/xtrans
   || echo "  !! xtransform failed"
 
 # ---------------------------------------------------------------------------
+# 2b) Prose numbers: contraction-error diagnostics and the beta-ladder warm
+#     start. eps_stats is deterministic and device-independent; the ladder rows
+#     are timings and record the machine in the CSV header comment -- across
+#     machines quote the ratios, not the absolute times.
+# ---------------------------------------------------------------------------
+echo "-- contraction-error diagnostics (eps_stats) --"
+rm -f "$HERE/eps_stats.csv"
+BONDS=4,32 SEED=$SEED OUT="$HERE/eps_stats.csv" CUDA_VISIBLE_DEVICES="" run "$HERE/eps_stats.jl" \
+  || echo "  !! eps_stats failed"
+echo "-- beta-ladder warm start (2048power, CPU) --"
+rm -f "$HERE/ladder_raw.csv"
+ROUNDS=1 SEED=$SEED OUT="$HERE/ladder_raw.csv" CUDA_VISIBLE_DEVICES="" run "$HERE/ladder.jl" \
+  || echo "  !! ladder failed"
+
+# ---------------------------------------------------------------------------
 # 3) Allocation profile of the CURRENT ('after') code, both devices.
 #    The A/B before/after split in Figure 3 needs the pre-change code; see below.
 # ---------------------------------------------------------------------------

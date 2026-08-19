@@ -1,11 +1,12 @@
 # Benchmarks and reproducibility
 
 Measurement drivers, raw per-run data, and the figure generator behind every
-figure and table in the SpinGlassPEPS.jl v2.0.0 software-update manuscript. The
-drivers run against the package itself
+figure, table, and prose number in the SpinGlassPEPS.jl v2.0.0 software-update
+manuscript. The drivers run against the package itself
 (<https://github.com/euro-hpc-pl/SpinGlassPEPS.jl>, ideally the tagged v2.0.0
-release); the numeric provenance for each quoted value is in
-[`../measurements.md`](../measurements.md).
+release). Every quoted value either regenerates from a driver here, with its
+results committed as CSVs, or is listed under **Recorded measurements** below
+together with the protocol that produced it.
 
 ## Launch everything
 
@@ -41,20 +42,54 @@ be run by hand via their `ENV` variables (see each file's header).
 | `sweep50.jl` | driver — energy-vs-runtime sweep over the 50×50 instances → `sweep50_cpu.csv` |
 | `spread.jl` | driver — Z₂-quotient solution spread; `BETAS=2.0,4.0,6.0` → `div3.csv`, `BETAS=3.0,8.0` → `div3_extra.csv` |
 | `xtransform.jl` | driver — pairwise valley distance across lattice transformations → `xtransform.csv` |
+| `eps_stats.jl` | driver — contraction-error diagnostics (Σε, max ε, bond-limited count, kept/offered) on `128power` at D=4/32 → `eps_stats.csv` |
+| `ladder.jl` | driver — β-ladder cold vs warm-started boundary MPS (per-rung wall time, Σε, energy), `2048power` bond 16 → `ladder_raw.csv` |
 | `makefigs.py` | renders the CSVs to `../figures/{quality,crossover,allocation}.{pdf,png}` |
+| `plot50.py` | standalone renderer for `energy_vs_runtime.{pdf,png}` from `sweep50_cpu.csv` (superseded by `makefigs.py`; not used by the manuscript) |
+| `energy_vs_runtime.{pdf,png}` | output of `plot50.py` |
 | `*.csv` | committed raw / summary data |
 
-Instances: the crossover uses chimera `chim_3_4_3` (36), `128power` (128), and
-`2048power` (2048), shipped in the package's `test/engine/instances/`; the sweep /
-spread / transform drivers read the 100 recovered 50×50 instances from the
-package's `benchmark/instances/square_50x50/`.
+Instances: the crossover, eps-stats, and ladder drivers use chimera `chim_3_4_3`
+(36), `128power` (128), and `2048power` (2048), shipped in the package's
+`test/engine/instances/`; the sweep / spread / transform drivers read the 100
+recovered 50×50 instances from the package's `benchmark/instances/square_50x50/`.
 
-## Which dataset feeds which figure/table
+## Which dataset feeds which figure/table/number
 
 - **`quality.pdf`** (Fig. 1): `sweep50_cpu.csv`, `div3.csv` + `div3_extra.csv`, `xtransform.csv`.
 - **`crossover.pdf` / Table 2**: `crossover.csv`.
 - **Table 1** (concurrency): `concurrency.csv` — median ratios, hand-filled into the LaTeX table (it is a table, not a figure).
 - **`allocation.pdf`** (Fig. 3): `alloc.csv` (the `alloc_GiB` rows — the figure is bytes-only).
+- **Prose, contraction error control**: `eps_stats.csv` — Σε = 3.1e-4 / 5.6e-14,
+  18-of-18 vs 0-of-4 bond-limited, 108/307 and 192/592 kept/offered, both arms
+  E = −210.933334. Deterministic and device-independent (CPU = GPU).
+- **Prose, β ladder**: `ladder_raw.csv`. Energies (−3334.0801, −3336.7734,
+  −3336.7734) and the cold-arm Σε (3.2e-3, 1.7e-4, 2e-5) reproduce on any
+  machine, and warm rungs report Σε = 0 by construction. The per-rung *timings*
+  are hardware-dependent: the manuscript quotes the Xeon Platinum 8462Y+ run
+  (48.2→41.7 s, 49.3→41.2 s, ≈15% per warmed rung; 4–6% on the search-dominated
+  `128power`), while the committed CSV is from the dev machine named in its
+  header comment — re-run there before quoting absolute times.
+
+## Protocol notes
+
+- **Interleaved paired ratios.** All speed-up figures are medians of per-round
+  paired ratios from an interleaved A/B loop, with a full `GC.gc(true)` (and
+  `CUDA.reclaim()` on device) before *every* timed section. A naive protocol —
+  warm up, time all A, then all B — left the CUDA memory pool in whatever state
+  the previous arm produced, inflating one serial baseline by up to 2.7×
+  (14.3 s vs 38.8 s for identical work) and fabricating an apparent 1.68×
+  speed-up where the corrected protocol showed 0.92×. This is the manuscript's
+  "methodological caution".
+- **`max_states` is held at 128 in the crossover** because the branch-and-bound
+  search runs on the host in both arms: a larger value adds the same absolute
+  time to both and pushes the ratio toward 1 without the device doing the tensor
+  work any better.
+- **Run timings on an idle machine.** One run executed concurrently with the
+  full test suite returned a different (better) energy for 1 of 30 points; RNG
+  seed, BLAS reduction order, and batch sizing were tested and eliminated as
+  causes. Aside from that anomaly, six seeds and five BLAS thread counts
+  reproduced energies bit-for-bit.
 
 ## Allocation (bytes-only)
 
@@ -71,5 +106,42 @@ pre-change checkout gives the `before`. The committed `alloc.csv` keeps the
 only the `alloc_GiB` rows. Its `before` figures were measured against earlier code and
 are not driver-regenerated — but being allocated bytes, they do not depend on the host.
 
-The tested hardware/software and the exact commit for each measurement belong in
-`../measurements.md`; pin them to the tagged `v2.0.0` release for a citable run.
+## Recorded measurements (not re-runnable from v2.0.0)
+
+These back manuscript prose but measure the **superseded code** or one-off
+profiler sessions, so no driver of the current release can regenerate them.
+All were taken on the RTX 5080 dev machine (20 logical cores, BLAS on 12
+threads), branch `lp/monorepo`, base commit `a07a54c` plus the update.
+
+- **Profiling attribution** (`CUDA.@profile` + Julia samplers, one solve of
+  `128power`, bond 32, `Zipper`/`Dense`, 1.73 s wall): GPU busy 101 ms =
+  **5.85%**; host time inside CUDA API calls 398 ms = **23%** — the
+  manuscript's "about a quarter", which caps kernel-batching gains at ≈1.3× —
+  remainder ≈71% host-side Julia work; ~34,500 kernel launches (mean ~3 µs).
+- **Allocation attribution** (`Profile.Allocs`, 2% sampling, pre-change code):
+  the `branch_states` line = **52.7%** of allocated bytes at 128 spins (70.9%
+  at 2048 spins on the GPU path) — the number that motivated the two
+  allocation changes.
+- **Pre-change arms of Figure 3** (alternating separate-process paired runs,
+  pre-change checkout): the `before` column of `alloc.csv` (92.06/25.05 GiB
+  states-change arms, 90.9 GiB temporaries arm). The isolated-kernel result
+  behind the manuscript's "no faster in isolation" — `ManualAllocator` ≈7%
+  *slower* per call while cutting one contraction's footprint from 257.5 MiB
+  to 0.5 MiB — is from the same pre-change series.
+- **RTX 5080 concurrency (negative result)**: on the consumer GPU the
+  concurrent sweep never beat the serial loop (0.68–0.94× at every admission
+  level, ~10% device utilization; the limit is CUDA API/allocator
+  serialization with this solver's many small kernels). This is why
+  `concurrency = :auto` stays at 1 on any GPU. Table 1's positive GPU numbers
+  are the H100 run committed in `concurrency_raw.csv`.
+
+## Provenance of the committed CSVs
+
+| Dataset | Machine |
+|---|---|
+| `crossover_raw.csv`, `concurrency_raw.csv`, `alloc_raw.csv` (after-arms) | Xeon Platinum 8462Y+ + one NVIDIA H100 |
+| `sweep50_cpu.csv`, `div3.csv`, `div3_extra.csv`, `xtransform.csv` | RTX 5080 dev machine |
+| `eps_stats.csv` | device-independent (verified CPU = GPU) |
+| `ladder_raw.csv` | dev machine named in its header comment (timings; see above) |
+
+Pin the package to the tagged `v2.0.0` release for a citable run.

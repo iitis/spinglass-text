@@ -4,8 +4,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LogLocator
 
-SRC = "/tmp/claude-1000/-home-lpawela-new-zksi-repo-SpinGlassPEPS-jl/05b5ad97-1423-4de9-8f55-a3bed0adc46a/scratchpad/sweep50_cpu.csv"
-OUT = "/home/lpawela/new-zksi-repo/spinglass-text/figures/energy_vs_runtime.pdf"
+SRC = "sweep50_cpu.csv"
+OUT = "energy_vs_runtime.pdf"
 
 rows = list(csv.DictReader(open(SRC)))
 for r in rows:

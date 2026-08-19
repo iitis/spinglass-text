@@ -29,7 +29,7 @@ dq(a, b, n) = (d = sum(a .!= b); min(d, n - d))
 
 function main()
     dir = joinpath(pkgdir(SpinGlassPEPS), "benchmark", "instances", "square_50x50")
-    out = open(get(ENV, "OUT", "/tmp/xtransform.csv"), "w")
+    out = open(get(ENV, "OUT", "xtransform.csv"), "w")
     println(out, "instance,n_ok,consensus,energy_spread,best_energy,d_min,d_med,d_max,n_valleys")
     flush(out)
     for k = 1:parse(Int, get(ENV, "NINST", "5"))

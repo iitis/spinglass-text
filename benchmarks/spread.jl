@@ -33,7 +33,7 @@ function main()
     dir = joinpath(pkgdir(SpinGlassPEPS), "benchmark", "instances", "square_50x50")
     m, n, t = 50, 50, 1; N = m * n * t
     betas = parse.(Float64, split(get(ENV, "BETAS", "2.0,4.0,6.0"), ","))
-    out = open(get(ENV, "OUT", "/tmp/div3.csv"), "w")
+    out = open(get(ENV, "OUT", "div3.csv"), "w")
     println(out, "instance,beta,energy,n_within,n_distinct_E,div_raw,div_quotient,",
                  "dq50,dq90,dqmax,raw_dmax,time_s")
     flush(out)

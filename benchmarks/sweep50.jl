@@ -4,7 +4,7 @@ using SpinGlassPEPS, CUDA
 using SpinGlassPEPS.SpinGlassEngine: no_merge
 using Base.ScopedValues: with
 
-const OUT = get(ENV, "OUT", "/tmp/sweep50.csv")
+const OUT = get(ENV, "OUT", "sweep50_cpu.csv")
 const NINST = parse(Int, get(ENV, "NINST", "10"))
 
 function solve1(ph, m, n; D, ms, β, onGPU)

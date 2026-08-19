@@ -5,7 +5,7 @@
 # loop and the concurrent arm is `sweep_transformations` at admission limit c. Arms are
 # interleaved and a full reclaim (`GC.gc(true)` + `CUDA.reclaim()` on device) runs before
 # EVERY timed section -- without this the CUDA pool state inflates the serial baseline and
-# fabricates a speed-up (see ../measurements.md, "Protocol").
+# fabricates a speed-up (see README.md, "Protocol notes").
 #
 # Ratio > 1 means the concurrent sweep is faster than the serial loop.
 #
