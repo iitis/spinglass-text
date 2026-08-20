@@ -25,7 +25,7 @@
 #      DEVICE=cpu|gpu  OUT=path(append)  PKG=SpinGlassPEPS.jl checkout
 using SpinGlassPEPS
 import CUDA
-using Random, Printf
+using Random, Printf, Statistics
 
 const SPINS  = parse(Int, get(ENV, "SPINS", "2048"))
 const BOND   = parse(Int, get(ENV, "BOND", "16"))
@@ -89,6 +89,15 @@ let (wi, (wm, wn, wt)) = INSTS[128]
     arm(true, wph, wm, wn, wbetas)
 end
 
+# First-touch warm-up at the TARGET size (not recorded): the first arm run at a
+# new problem size pays one-time costs the small-instance JIT pass cannot cover
+# (heap growth to the large working set, the first large Zipper sketches), which
+# inflated the first timed arm by ~25% on identical work — rung 1 is cold in
+# both arms and must time ~equal for a round to count as clean.
+if SPINS != 128
+    arm(false, ph, M, N, BETAS[1:1])
+end
+
 function cpu_model()
     isfile("/proc/cpuinfo") || return String(Sys.CPU_NAME)
     for line in eachline("/proc/cpuinfo")
@@ -103,6 +112,8 @@ if !isfile(OUT)
         println(io, "spins,bond,device,round,arm,rung,beta,seed,wall_s,sum_eps,energy")
     end
 end
+
+rung_ratios = [Float64[] for _ in BETAS]
 
 for r in 1:ROUNDS
     s = SEED + r
@@ -127,9 +138,20 @@ for r in 1:ROUNDS
     tw = sum(st.wall_time for st in ladders[true].steps)
     @printf("  round %d: cold %.2fs  warm %.2fs  (ladder speed-up %.1f%%)\n", r, tc, tw, 100 * (1 - tw / tc))
     for (k, (c, w)) in enumerate(zip(ladders[false].steps, ladders[true].steps))
+        push!(rung_ratios[k], c.wall_time / w.wall_time)
         @printf("    rung %d beta=%-5.4g  cold %.2fs Σε=%.3e E=%.4f | warm%s %.2fs Σε=%.3e E=%.4f\n",
             k, c.beta, c.wall_time, c.truncation.discarded_sum, c.energy,
             w.warm_started ? "" : "(cold)", w.wall_time, w.truncation.discarded_sum, w.energy)
     end
     flush(stdout)
 end
+
+# Median per-rung paired cold/warm ratios across rounds -- the quotable numbers.
+# Rung 1 is cold in both arms, so its median must sit near 1.00 for the run to
+# count as clean; a first round biased by residual warm-up is diluted here by
+# the later rounds and the alternating arm order.
+@printf("== medians over %d round(s):", ROUNDS)
+for (k, rs) in enumerate(rung_ratios)
+    @printf("  rung %d cold/warm %.3f (%+.1f%%)", k, median(rs), 100 * (median(rs) - 1))
+end
+println()
