@@ -63,13 +63,16 @@ recovered 50×50 instances from the package's `benchmark/instances/square_50x50/
 - **Prose, contraction error control**: `eps_stats.csv` — Σε = 3.1e-4 / 5.6e-14,
   18-of-18 vs 0-of-4 bond-limited, 108/307 and 192/592 kept/offered, both arms
   E = −210.933334. Deterministic and device-independent (CPU = GPU).
-- **Prose, β ladder**: `ladder_raw.csv`. Energies (−3334.0801, −3336.7734,
-  −3336.7734) and the cold-arm Σε (3.2e-3, 1.7e-4, 2e-5) reproduce on any
-  machine, and warm rungs report Σε = 0 by construction. The per-rung *timings*
-  are hardware-dependent: the manuscript quotes the Xeon Platinum 8462Y+ run
-  (48.2→41.7 s, 49.3→41.2 s, ≈15% per warmed rung; 4–6% on the search-dominated
-  `128power`), while the committed CSV is from the dev machine named in its
-  header comment — re-run there before quoting absolute times.
+- **Prose, β ladder**: `ladder_raw.csv` — five interleaved rounds on the Xeon
+  Platinum 8462Y+ (named in the header comment; the machine of Tables 1–2).
+  Energies (−3334.0801, −3336.7734, −3336.7734) and the cold-arm Σε (3.2e-3,
+  1.7e-4, 1.9e-5) reproduce on any machine, and warm rungs report Σε = 0 by
+  construction. The quotable timings are the medians of paired per-round
+  cold/warm ratios (the driver prints them): rung 1 — cold in both arms —
+  medians 1.01, the protocol-cleanliness check; the warmed rungs median 1.32
+  and 1.34 (≈25% faster), ≈16% over the whole ladder. Absolute rung times
+  varied 23–38 s across rounds on the same machine, so quote ratios, not
+  seconds.
 
 ## Protocol notes
 

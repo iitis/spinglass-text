@@ -193,9 +193,11 @@ instance-dependent.
 \texttt{beta\_ladder} walks an increasing schedule in which each rung reuses the
 previous rung's boundary MPS to start variational compression, instead of forming
 $W\psi$ exactly and truncating it. Where
-boundary-MPS construction dominates (2048-spin instance) this is ${\approx}15\%$
-faster per warm-started rung ($48.2\to41.7$~s, $49.3\to41.2$~s) for identical
-energies; where the search dominates it falls to 4--6\%.
+boundary-MPS construction dominates (2048-spin instance) a warm-started rung is
+${\approx}25\%$ faster --- median paired cold/warm ratios of $1.32$ and $1.34$
+over five interleaved rounds, ${\approx}16\%$ over the whole ladder --- for
+identical energies; the gain tracks how much of the solve is spent building
+boundary MPS and shrinks where the search dominates.
 
 Two caveats bound how far the error measure can be pushed. Warm starting and the
 discarded-weight measure are incompatible: a warm start optimizes \emph{within} a
