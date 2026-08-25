@@ -13,9 +13,9 @@
 # 108/307; D=32 sum 5.56e-14, max 5.51e-14, bond-limited 0/4, kept/offered
 # 192/592; both E = -210.933334. All values reproduce bit-for-bit. The
 # bond-limited flag counts only bond-capped truncations that discard more than
-# numerically negligible weight (NEGLIGIBLE_DISCARD in SpinGlassTensors), which
-# is what makes "0 bond-limited" mean "raising D cannot change the answer" --
-# at D=32 the four bond-capped cuts drop eps_i <= 5.5e-14 and do not count.
+# numerically negligible weight (NEGLIGIBLE_DISCARD in SpinGlassTensors). Thus
+# "0 bond-limited" means no change from raising D is expected at the reported
+# precision: at D=32 the four bond-capped cuts drop eps_i <= 5.5e-14 and do not count.
 # The stats are device-independent (CPU == GPU here).
 #
 # ENV: BONDS=csv of Ints (default "4,32")  SEED=Int  DEVICE=cpu|gpu

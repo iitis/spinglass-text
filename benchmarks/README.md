@@ -21,8 +21,8 @@ PKG=../../SpinGlassPEPS.jl GPU=0 SEED=1 ./run_all.sh
 (regenerating the raw + summary CSVs here), and renders the figures into
 `../figures/`. The crossover numbers are **timings**, so they are
 measured serially on the single device `GPU=<id>` (clean, uncontended); the other
-cards on a multi-GPU host are left idle. Allocation is reported as bytes
-(hardware-independent), so it needs no such isolation. The concurrency step is the one exception —
+cards on a multi-GPU host are left idle. Allocation is reported as bytes, and its
+post-change totals were reproduced on both tested systems. The concurrency step is the one exception —
 its concurrent arm is launched multi-threaded (`-t auto`; override with `JTHREADS=N`)
 so the per-transformation solves can overlap. Expect a few hours end to end —
 dominated by per-process JIT and the 2048-spin cells; raw CSVs are written
@@ -97,9 +97,9 @@ recovered 50×50 instances from the package's `benchmark/instances/square_50x50/
 ## Allocation (bytes-only)
 
 Figure 3 reports **allocated bytes** before/after the two changes (single-matrix
-branched-configuration set; off-heap contraction temporaries). Allocated bytes are
-**hardware-independent**: the H100 run reproduces the post-change figures (2048-spin
-bond-32: 32.3 GiB CPU, 24.1 GiB GPU), so no per-device timing A/B is needed.
+branched-configuration set; off-heap contraction temporaries). The post-change totals
+were **reproduced on both tested systems**; on the H100 system the 2048-spin bond-32
+solve allocated 32.3 GiB on CPU and 24.1 GiB on GPU.
 
 `alloc.jl` profiles one code state (tagged by `LABEL`); `run_all.sh` records the
 current (`after`) numbers in `alloc_raw.csv`, and `alloc.jl` at `LABEL=before` on a
@@ -107,7 +107,7 @@ pre-change checkout gives the `before`. The committed `alloc.csv` keeps the
 `change,device,metric,before,after` format (`change` ∈ {`branch_states`,`temporaries`},
 `device` ∈ {`CPU`,`GPU`}, `metric` ∈ {`wall_s`,`gc_s`,`alloc_GiB`}); the figure uses
 only the `alloc_GiB` rows. Its `before` figures were measured against earlier code and
-are not driver-regenerated — but being allocated bytes, they do not depend on the host.
+are not driver-regenerated; the committed results record the tested environments.
 
 ## Recorded measurements (not re-runnable from v2.0.0)
 

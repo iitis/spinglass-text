@@ -253,8 +253,8 @@ def figure_crossover():
 # Figure 3 -- what the allocation changes bought
 # --------------------------------------------------------------------------
 def figure_alloc():
-    # Bytes only: allocated GiB is hardware-independent (the H100 run reproduces the
-    # post-change figures). Wall/GC timings are dev-machine specific and not plotted.
+    # Bytes only: post-change allocated GiB was reproduced on both tested systems.
+    # Wall/GC timings are machine-specific and not plotted.
     rows = load("alloc.csv")
     groups = [("branch_states", "GPU", r"states"),
               ("branch_states", "CPU", r"states"),

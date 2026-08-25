@@ -9,7 +9,8 @@
 #
 # Multi-GPU hosts: the crossover/allocation numbers are TIMINGS, so each is measured
 # serially on ONE pinned device for a clean, uncontended reading -- set GPU=<id>.
-# The other cards are left idle; nothing here benefits from concurrent solves.
+# The other cards are left idle for crossover/allocation timing; the concurrency
+# benchmark below intentionally overlaps solves on the selected card.
 #
 #   PKG=/path/to/SpinGlassPEPS.jl GPU=0 SEED=1 ./run_all.sh
 #
@@ -66,7 +67,7 @@ python3 "$HERE/summarize_crossover.py" "$CROSS" "$HERE/crossover.csv" || echo " 
 #     sweep_transformations at admission limit c, as median per-round paired
 #     ratios (interleaved arms, full reclaim before each timed section).
 #     Launched multi-threaded (runmt) so the concurrent arm can overlap; GPU
-#     stops at c=4 (fanning out over one device never beats the serial loop).
+#     stops at c=4, the largest admission level measured in the manuscript.
 # ---------------------------------------------------------------------------
 CONC="$HERE/concurrency_raw.csv"; rm -f "$CONC"
 echo "-- concurrency (Table 1): CPU, c=1,2,4,8, 5 rounds --"
@@ -106,7 +107,7 @@ BONDS=4,32 SEED=$SEED OUT="$HERE/eps_stats.csv" CUDA_VISIBLE_DEVICES="" run "$HE
   || echo "  !! eps_stats failed"
 echo "-- beta-ladder warm start (2048power, CPU) --"
 rm -f "$HERE/ladder_raw.csv"
-ROUNDS=1 SEED=$SEED OUT="$HERE/ladder_raw.csv" CUDA_VISIBLE_DEVICES="" run "$HERE/ladder.jl" \
+ROUNDS=5 SEED=$SEED OUT="$HERE/ladder_raw.csv" CUDA_VISIBLE_DEVICES="" run "$HERE/ladder.jl" \
   || echo "  !! ladder failed"
 
 # ---------------------------------------------------------------------------

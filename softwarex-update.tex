@@ -62,9 +62,10 @@ and adds capabilities the original release lacked. Truncating factorizations now
 report the weight they discard, so a heuristic contraction can state how much of
 the distribution it threw away without an exact oracle, and an inverse-temperature
 ladder with warm-started boundary matrix product states makes choosing $\beta$
-empirical. Profiling shows the solver is host-bound; moving the contraction
+empirical. Profiling on the tested RTX~5080 configuration shows the solver is
+host-bound; moving the contraction
 temporaries off the collected heap cuts a 2048-spin solve's allocated memory by
-about two-thirds (90.9 to 32~GiB). We also
+about two-thirds (90.9 to 32~GiB). On the tested Xeon/H100 system we also
 establish where GPU execution begins to pay --- later than the original article
 implies.
 \end{abstract}
@@ -175,15 +176,16 @@ dimensions. That last count answers a question users could not previously ask. O
 instance, bond dimension $D=4$ gives $\sum\varepsilon = 3.1\times10^{-4}$ with all
 18 truncations forced by the bond bound, retaining 108 of 307 singular values; at
 $D=32$ the same solve gives $5.6\times10^{-14}$ with no truncation bond-limited,
-retaining 192 of 592. A bond-limited count of zero means the bond dimension was
-never the binding constraint, so raising it cannot change the answer --- previously
+retaining 192 of 592. A bond-limited count of zero means that no bond-capped
+truncation discarded relative weight above the $10^{-12}$ reporting threshold,
+so no change from raising $D$ is expected at the reported precision --- previously
 a matter of guesswork.
 
 Across the eight-transformation protocol the solver additionally reports the spread
-of energies and how many transformations reached the best one. Eight distinct
-contraction orders agreeing is oracle-free evidence; a spread that is a sizeable
-fraction of the energy scale says the result should not be believed however good the
-best energy looks.
+of energies and how many transformations reached the best one. Agreement among eight
+distinct transformed contraction orders is an oracle-free consistency check; a spread
+that is a sizeable fraction of the energy scale flags transformation-order-sensitive
+disagreement, which may reflect contraction or search error.
 
 \textbf{An inverse-temperature ladder.} $\beta$ is the most consequential
 parameter and was the least guidable --- too small and the conditional
@@ -239,7 +241,7 @@ kernel batches are sized against \emph{its} slice rather than the shared pool.
 Without that last step the reservation would be advisory only: every concurrent
 solve would measure the same free pool and batch as though it owned all of it.
 
-Concurrency pays on both devices (Table~\ref{tab:sweep}). On CPU the sweep scales
+Concurrency pays on both tested devices (Table~\ref{tab:sweep}). On CPU the sweep scales
 monotonically, reaching $3.1\times$ and $1.6\times$ at eight-way on the two cases;
 on a single GPU it helps as well, up to $1.7\times$ at two-way and $1.4\times$ at
 four-way. A single admitted solve ($c{=}1$) is a slight net loss --- the driver's
@@ -320,8 +322,9 @@ and, at 2048 spins and bond 16, still ${\approx}1.6\times$ faster in the dense c
 (${\approx}1.3\times$ sparse); the device overtakes it only in the largest
 sparse case --- 2048 spins at bond 32, where the GPU is ${\approx}1.4\times$ faster;
 the dense case at that size still favours the host by ${\approx}10\%$. Energies agree
-in every cell. Exploratory work therefore belongs on the CPU; the D-Wave-scale sparse
-regime at large bond is where the device earns its place.
+in every cell. On the tested Xeon/H100 system, the CPU is preferable for exploratory
+work in these smaller or dense configurations; the D-Wave-scale sparse regime at
+large bond is where the device earns its place.
 
 \begin{table}[t]
 \small
@@ -352,18 +355,18 @@ Spins & $D{=}8$ & $D{=}16$ & $D{=}32$ & $D{=}64$ \\
 matrix-backed branched configuration set, ``temp.'' the off-heap contraction
 temporaries. The temporaries change removes about two-thirds of the CPU heap; the
 states change is small in \emph{bytes} because its benefit is a reduced live-object
-count rather than volume. Allocated bytes are hardware-independent --- the H100 run
-reproduces the post-change figures (32.3~GiB CPU, 24.1~GiB GPU).}
+count rather than volume. The post-change allocation totals were reproduced on both
+tested systems; the H100 run gives 32.3~GiB on CPU and 24.1~GiB on GPU.}
 \label{fig:alloc}
 \end{figure}
 
-\textbf{Where the time actually goes.} Profiling explains both tables and
-redirects the obvious optimizations. The device is never the constraint: on a
-profiled 128-spin solve, host-side CUDA API calls account for only about a quarter
-of wall time and the majority is host-side Julia work. The solver is host-bound at
-every size we measured --- which is why the CPU stays competitive with the device
-across the crossover, the tensor work being nearly free but removing none of the
-bookkeeping.
+\textbf{Where the time actually goes.} Profiling on the tested RTX~5080
+configuration explains both tables and redirects the obvious optimizations. On the
+profiled 128-spin solve the device was not the bottleneck: host-side CUDA API calls
+account for only about a quarter of wall time and the majority is host-side Julia
+work. The profiled 128- and 2048-spin configurations were host-bound, which helps
+explain why the CPU remains competitive across the measured crossover: accelerating
+the tensor work removes none of the host-side bookkeeping.
 
 An idle device invites kernel-level batching, and we did not pursue it for a reason
 worth recording: eliminating the entire CUDA API share would cap at
@@ -376,24 +379,24 @@ of live objects sharply --- its allocated \emph{bytes} fall only ${\approx}4\%$ 
 the large solve, but the object count that drives collection falls far more.
 Separately, the multi-tensor contraction temporaries were moved off the collected
 heap onto explicit allocation, cutting a 2048-spin bond-32 solve's allocated bytes
-by about two thirds (90.9 to 32~GiB on CPU). Both reductions are hardware-independent
---- the H100 run reproduces the post-change figures --- and both were measured in a
-full solve, since the explicit allocator is no faster in isolation and pays only
-through the allocations it removes from the collected heap.
+by about two thirds (90.9 to 32~GiB on CPU). The post-change allocation totals were
+reproduced on both tested systems, and both reductions were measured in a full solve,
+since the explicit allocator is no faster in isolation and pays only through the
+allocations it removes from the collected heap.
 
-\textbf{Impact, limitations and outlook.} Contraction error is now an observable
-rather than an article of faith, letting a practitioner distinguish a converged run
-from a broken one on a problem where no exact answer is available --- the regime the
-method exists for --- provided it is read as a statement about the contraction and
-not about solution quality. The consolidation and the deprecation shims make the
+\textbf{Impact, limitations and outlook.} Contraction error is now observable,
+letting a practitioner detect substantial contraction loss on a problem where no
+exact answer is available --- the regime the method exists for. It diagnoses the
+contraction and does not by itself establish overall solver convergence or solution
+quality. The consolidation and the deprecation shims make the
 published interface reproducible, and shipping the benchmark instances closes a gap
 in that reproducibility that predates this update. The raw per-run data and figure
 scripts behind the figures and tables, together with runnable drivers for the
 crossover, concurrency, diversity, energy-vs-runtime, contraction-error, and
 $\beta$-ladder results, are provided with the manuscript sources in the
-\texttt{benchmarks/} directory. The allocation figure reports allocated bytes,
-which are hardware-independent; the H100 run reproduces its post-change values,
-and its pre-change values are recorded measurements of the superseded code.
+\texttt{benchmarks/} directory. The allocation figure reports allocated bytes; its
+post-change values were reproduced on both tested systems, while its pre-change
+values are recorded measurements of the superseded code.
 
 The limitations are equally plain. Warm starting and the
 discarded-weight measure cannot be combined, and warm starting currently covers only
