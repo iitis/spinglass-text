@@ -4,7 +4,7 @@ Draft of a SoftwareX **Software Update** article covering everything since the
 published version (v1.4.1, SoftwareX **31** (2025) 102257).
 
 ```
-softwarex-update.tex   manuscript (built on the official update template, v6, March 2026)
+manuscript.tex         manuscript (built on the official update template, v6, March 2026)
 refs.bib               bibliography
 figures/               generated figures included by the manuscript
 benchmarks/            runnable drivers + committed raw/summary results behind every
@@ -21,7 +21,7 @@ of which measure the superseded code) are recorded with their protocol in
 Build (needs `elsarticle.cls`, present in TeX Live):
 
 ```sh
-latexmk -pdf -bibtex softwarex-update.tex   # run twice; refs resolve on the 2nd pass
+latexmk -pdf -bibtex manuscript.tex   # run twice; refs resolve on the 2nd pass
 ```
 
 Compiles with **zero** undefined references or citations.
