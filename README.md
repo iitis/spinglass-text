@@ -4,24 +4,33 @@ Draft of a SoftwareX **Software Update** article covering everything since the
 published version (v1.4.1, SoftwareX **31** (2025) 102257).
 
 ```
-manuscript.tex         working copy (official update template, v6, March 2026)
-refs.bib               bibliography
-figures/               generated figures included by the manuscript
+softx/v_1/             SoftwareX submission version (official update template,
+                       v6, March 2026). Self-contained: manuscript.tex, refs.bib,
+                       figures/, run.sh
+arxiv/v_1/             arXiv version: identical except line numbering removed,
+                       which arXiv does not accept. run.sh builds the manuscript
+                       and assembles arxiv-submission.zip (tex + .bbl + figures
+                       + anc/benchmarks)
+
 benchmarks/            runnable drivers + committed raw/summary results behind every
                        figure, table, and prose number (see benchmarks/README.md)
-
-softx/v_1/             SoftwareX submission snapshot: manuscript as submitted,
-                       self-contained (tex + refs.bib + figures + built PDF)
-arxiv/v_1/             arXiv snapshot: identical except line numbering removed,
-                       which arXiv does not accept. run.sh also assembles
-                       arxiv-submission.zip (tex + .bbl + figures + anc/benchmarks)
+figures/               where benchmarks/makefigs.py renders the figures; copy them
+                       into a version folder when preparing a revision
 ```
 
-Each submission folder is self-contained and frozen; `manuscript.tex` at the root
-stays the working copy for the next revision. Build either with its `run.sh`.
-The arXiv upload must include `manuscript.bbl` (arXiv does not run BibTeX) and
-carries `benchmarks/` as arXiv ancillary files, since the data-availability
-statement cites it as supplementary material.
+There is no working copy at the root: each version folder is self-contained and
+frozen, and the next revision starts by copying the previous one (`softx/v_1` →
+`softx/v_2`). Build either version with its own `run.sh`:
+
+```sh
+cd softx/v_1 && ./run.sh      # journal submission PDF
+cd arxiv/v_1 && ./run.sh      # arXiv PDF + arxiv-submission.zip
+```
+
+Built PDFs and the zip are gitignored since `run.sh` regenerates them. The arXiv
+upload must include `manuscript.bbl` (arXiv does not run BibTeX) and carries
+`benchmarks/` as arXiv ancillary files, since the data-availability statement
+cites it as supplementary material.
 
 Every benchmark is runnable from `benchmarks/` and its results are committed
 there as CSVs; `benchmarks/makefigs.py` regenerates the manuscript figures into
@@ -30,13 +39,8 @@ there as CSVs; `benchmarks/makefigs.py` regenerates the manuscript figures into
 of which measure the superseded code) are recorded with their protocol in
 `benchmarks/README.md`.
 
-Build (needs `elsarticle.cls`, present in TeX Live):
-
-```sh
-latexmk -pdf -bibtex manuscript.tex   # run twice; refs resolve on the 2nd pass
-```
-
-Compiles with **zero** undefined references or citations.
+Building needs `elsarticle.cls`, present in TeX Live. Both versions compile with
+**zero** undefined references or citations.
 
 ## Template compliance
 

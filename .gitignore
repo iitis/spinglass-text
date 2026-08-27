@@ -20,8 +20,10 @@ __pycache__/
 # Kept on disk, deliberately not tracked
 chagptreview.md
 
-# Built manuscript PDF (root only; figures/ and benchmarks/ PDFs stay tracked)
-/*.pdf
+# Built manuscript files in the version folders (regenerable with each
+# folder's run.sh). figures/ and benchmarks/ PDFs stay tracked.
+manuscript.pdf
+manuscript.synctex.gz
 
 # Regenerable arXiv upload package (arxiv/v_1/run.sh builds it)
 arxiv-submission.zip
