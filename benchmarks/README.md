@@ -60,7 +60,9 @@ recovered 50×50 instances from the package's `benchmark/instances/square_50x50/
 - **`crossover.pdf` / Table 2**: `crossover.csv`.
 - **Table 1** (concurrency): `concurrency.csv`, giving median ratios, hand-filled into the LaTeX table (it is a table, not a figure).
 - **`allocation.pdf`** (Fig. 3): `alloc.csv` (the `alloc_GiB` rows; the figure is bytes-only).
-- **Prose, contraction error control**: `eps_stats.csv`, giving Σε = 3.1e-4 / 5.6e-14,
+- **Prose, contraction error control**: `eps_stats.csv` (the bond-limited flag
+  counts only bond-capped truncations discarding more than `NEGLIGIBLE_DISCARD =
+  1e-12`, the manuscript's $10^{-12}$ reporting threshold), giving Σε = 3.1e-4 / 5.6e-14,
   18-of-18 vs 0-of-4 bond-limited, 108/307 and 192/592 kept/offered, both arms
   E = −210.933334. Deterministic and device-independent (CPU = GPU).
 - **Prose, β ladder**: `ladder_raw.csv`, five interleaved rounds on the Xeon
