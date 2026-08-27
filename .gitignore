@@ -19,3 +19,6 @@ __pycache__/
 
 # Kept on disk, deliberately not tracked
 chagptreview.md
+
+# Built manuscript PDF (root only; figures/ and benchmarks/ PDFs stay tracked)
+/*.pdf
