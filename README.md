@@ -4,12 +4,24 @@ Draft of a SoftwareX **Software Update** article covering everything since the
 published version (v1.4.1, SoftwareX **31** (2025) 102257).
 
 ```
-manuscript.tex         manuscript (built on the official update template, v6, March 2026)
+manuscript.tex         working copy (official update template, v6, March 2026)
 refs.bib               bibliography
 figures/               generated figures included by the manuscript
 benchmarks/            runnable drivers + committed raw/summary results behind every
                        figure, table, and prose number (see benchmarks/README.md)
+
+softx/v_1/             SoftwareX submission snapshot: manuscript as submitted,
+                       self-contained (tex + refs.bib + figures + built PDF)
+arxiv/v_1/             arXiv snapshot: identical except line numbering removed,
+                       which arXiv does not accept. run.sh also assembles
+                       arxiv-submission.zip (tex + .bbl + figures + anc/benchmarks)
 ```
+
+Each submission folder is self-contained and frozen; `manuscript.tex` at the root
+stays the working copy for the next revision. Build either with its `run.sh`.
+The arXiv upload must include `manuscript.bbl` (arXiv does not run BibTeX) and
+carries `benchmarks/` as arXiv ancillary files, since the data-availability
+statement cites it as supplementary material.
 
 Every benchmark is runnable from `benchmarks/` and its results are committed
 there as CSVs; `benchmarks/makefigs.py` regenerates the manuscript figures into
