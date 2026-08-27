@@ -47,16 +47,22 @@ and a licence file, and a **GitHub** URL in C2 (other hosts are not accepted).
 
 ## Remaining pre-submission actions
 
-1. **Tag and register v2.0.0.** This ships as **2.0.0**, matching `Project.toml`;
-   tags currently stop at `v1.5.0`. C1 must name a real, tagged, registered
-   release: push the `lp/monorepo` work, merge, tag `v2.0.0`, register in the
-   Julia General registry. (Marked as a `%% TODO` comment in the tex header.)
-2. **Zenodo DOI.** The manuscript now cites the **concept DOI**
-   (`10.5281/zenodo.14627392`, always resolves to the latest deposit) and says
-   "the package is archived on Zenodo", which is true today. Once the v2.0.0 tag
-   mints a new deposit, optionally pin the version-specific DOI in `refs.bib`
-   (marked as a TODO comment there). Also reconcile the repo README badge, which shows
-   `10.5281/zenodo.3245496` while linking `10.5281/zenodo.14627393`.
+1. **Repo README badge.** It shows `10.5281/zenodo.3245496` while linking
+   `10.5281/zenodo.14627393`; point both at the concept DOI
+   `10.5281/zenodo.14627392` (or the v2.0.0 record `10.5281/zenodo.22134580`).
+2. **Zenodo deposit authorship (optional).** The v2.0.0 record's creator list is
+   auto-generated from GitHub contributors and includes raw usernames
+   (`annamariadziubyna`, `zpuchala`); worth curating on Zenodo since that record
+   is the citable archive.
+3. **Upload `benchmarks/` as supplementary material.** The data-availability
+   sentence now cites it as supplementary material accompanying the article, so it
+   has to be part of the submission package (readers of the published paper cannot
+   see the manuscript sources).
+
+*Done:* v2.0.0 is tagged, released, registered in the Julia General registry, and
+archived on Zenodo (`10.5281/zenodo.22134580`, pinned in `refs.bib`). C1 names a
+real release, C2 points at `/tree/v2.0.0`, and C7 at the deployed `/v2.0.0/` docs
+(`DOCUMENTER_NEWEST = v2.0.0`; `/stable/` now serves the same build).
 
 *Settled:* authorship (Łukasz Pawela and Bartłomiej Gardas, i.e. the authors of
 the update; the other names on the 2025 article authored the original package);
