@@ -53,16 +53,16 @@ Ising-like optimization on quasi-two-dimensional graphs}
 of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
 
 \begin{abstract}
-This update consolidates the four separately registered packages of
-\texttt{SpinGlassPEPS.jl} into one installable package with a curated public API.
-Truncating factorizations now report the weight they discard, so a heuristic
-contraction can state how much it discarded without an exact oracle, and an
-inverse-temperature ladder with warm-started boundary matrix product states makes
-the choice of $\beta$ empirical. Profiling shows the solver is host-bound; moving
-the contraction temporaries off the collected heap cuts a 2048-spin bond-32
-solve's allocated memory by two-thirds (90.9 to 32~GiB on CPU). On an H100 system
-we also locate where GPU execution begins to pay, later than the original article
-implies.
+This update consolidates \texttt{SpinGlassPEPS.jl}'s four separately registered
+packages into one installable package with a curated public API. Truncating
+factorizations now report the weight they discard, so a heuristic contraction
+can bound its own error without an exact oracle. An inverse-temperature ladder
+replaces the original scalar $\beta$, warm-starting each rung from the previous
+boundary matrix product state, which is ${\approx}25\%$ faster. Profiling shows
+the solver is host-bound. Moving contraction temporaries off the collected heap
+cuts a 2048-spin bond-32 solve's allocated memory by about two-thirds (90.9 to
+32~GiB on CPU). On an H100 the device overtakes the host only in the largest
+sparse case measured, later than the original article implies.
 \end{abstract}
 
 \begin{keyword}
@@ -122,25 +122,25 @@ C8 & Support email for questions & \texttt{lpawela@iitis.pl} \\
 \section{Description of the software-update}
 \label{Description of the software-update}
 
-\textbf{Motivation.} The original publication~\cite{smierzchalski2025spinglasspeps}
-described \texttt{SpinGlassPEPS.jl} as separately registered
+\textbf{Motivation.} The original
+publication~\cite{smierzchalski2025spinglasspeps} described
+\texttt{SpinGlassPEPS.jl} as separately registered
 Julia~\cite{bezanson2017julia} packages in version lockstep, whose interface had
-since drifted: renames shipped without deprecation paths, so the listings printed
-in the 2025 article no longer ran. Worse, the solver reported no measure of how
-much its heuristic contraction discarded, so a result could be validated only
-against an exact oracle, as the original benchmark had to do when it certified
-ground states with CPLEX. Algorithms and an extensive benchmark
-campaign are described separately~\cite{dziubyna2024limitations}, and this version
-is archived on Zenodo~\cite{spinglasspeps_zenodo}.
+since drifted: renames shipped without deprecation paths. The solver also
+reported no measure of how much its heuristic contraction discarded, so a result
+could be validated only against an exact oracle, as the original benchmark had
+to do when it certified ground states with CPLEX. Algorithms and an extensive
+benchmark campaign are described separately~\cite{dziubyna2024limitations}.
+This, current version is archived on Zenodo~\cite{spinglasspeps_zenodo}.
 
-\textbf{Consolidation into one package.} The four implementation packages
+All the packages are consolidated into one. The four implementation packages
 \texttt{SpinGlassTensors}, \texttt{SpinGlassNetworks},
-\texttt{SpinGlassExhaustive} and \texttt{SpinGlassEngine} are now internal modules
-of a single installable \texttt{SpinGlassPEPS}, so \texttt{pkg> add SpinGlassPEPS}
-installs the complete solver. \texttt{using SpinGlassPEPS} brings a curated surface
-of roughly eighty documented symbols instead of re-exporting some 240. Lower-level
-kernels remain reachable through the submodules, and deprecation shims restore the
-API forms printed in the original article, so its listings execute again.
+\texttt{SpinGlassExhaustive} and \texttt{SpinGlassEngine} are now internal
+modules of a single installable \texttt{SpinGlassPEPS}. \texttt{pkg> add
+SpinGlassPEPS} installs the complete solver. \texttt{using SpinGlassPEPS} brings
+a curated surface of roughly eighty documented symbols, while the previous stack
+re-exported some 240. All the lower-level kernels remain reachable through the
+submodules.
 
 The clustered Hamiltonian is now a concrete \texttt{PottsHamiltonian} type with
 typed fields read through accessors, rather than a \texttt{MetaGraphs} property bag
@@ -148,8 +148,8 @@ consulted dynamically inside the search loop. The process-global memoization tha
 cached boundary matrix product states (MPS), MPO layers and environments has been
 replaced by a contraction cache owned by each contractor, with explicit per-row
 eviction. The old design was thread-unsafe by construction and had to be cleared by
-manual calls scattered through the search, so concurrent solving was not available
-before this change.
+manual calls scattered through the search. Concurrent solving was therefore not
+available before this change.
 
 The update also repairs defects that silently affected results.
 \texttt{corner\_matrix} threw for every \texttt{SiteTensor} input and returned
@@ -160,57 +160,55 @@ benchmark instances at the size used by the original article's figures are now
 shipped with the package, since the published listing resolved them from a directory
 that did not contain them.
 
-\textbf{Contraction error control.} Every truncating factorization now records the
-relative weight it discards, $\varepsilon_i =
-\lVert\Sigma_{\text{dropped}}\rVert^2/\lVert\Sigma\rVert^2$, into an accumulator
-scoped to the running task, so concurrent solves cannot pool statistics. A solve
-reports $\sum_i\varepsilon_i$, the leading term of the accumulated fidelity loss of
-a boundary-MPS sweep, together with $\max_i\varepsilon_i$. It also counts the
-truncations in which the bond-dimension bound, rather than the singular-value
-tolerance, forced a non-negligible discard, and it records how many dimensions were
-retained out of those offered. Those last two quantities were not available in the
-original release. On a 128-spin instance, bond dimension $D=4$ gives
-$\sum\varepsilon = 3.1\times10^{-4}$ with all 18 truncations forced by the bond
-bound, retaining 108 of 307 singular values. At $D=32$ the same solve gives
-$5.6\times10^{-14}$ with no truncation bond-limited, retaining 192 of 592. A
-bond-limited count of zero means that no bond-capped truncation discarded relative
-weight above the $10^{-12}$ reporting threshold, so no change from raising $D$ is
-expected at the reported precision. The original release gave no way to check that.
+Every truncating factorization now records the relative weight it discards,
+$\varepsilon_i = \lVert\Sigma_{\text{dropped}}\rVert^2/\lVert\Sigma\rVert^2$,
+into an accumulator scoped to the running task, so concurrent solves cannot pool
+statistics. A solve reports $\sum_i\varepsilon_i$, the leading term of the
+accumulated fidelity loss of a boundary-MPS sweep, together with
+$\max_i\varepsilon_i$. It also counts the truncations in which the
+bond-dimension bound, rather than the singular-value tolerance, forced a
+non-negligible discard, and it records how many dimensions were retained out of
+those offered. Those last two quantities were not available in the original
+release. On a 128-spin instance, bond dimension $D=4$ gives $\sum\varepsilon =
+3.1\times10^{-4}$ with all 18 truncations forced by the bond bound, retaining
+108 of 307 singular values. At $D=32$ the same solve gives $5.6\times10^{-14}$
+with no truncation bond-limited, retaining 192 of 592. A bond-limited count of
+zero means that no bond-capped truncation discarded relative weight above the
+$10^{-12}$ reporting threshold, so no change from raising $D$ is expected at the
+reported precision.
 
-Across the eight-transformation protocol the solver additionally reports the spread
-of energies and how many transformations reached the best one. Agreement among eight
-distinct transformed contraction orders is an oracle-free consistency check. A
-spread that is a sizeable fraction of the energy scale flags
-transformation-order-sensitive disagreement, which may reflect contraction or search
-error.
+Across the eight-transformation protocol the solver additionally reports the
+spread of energies and how many transformations reached the best one. Agreement
+among eight distinct transformed contraction orders is an oracle-free
+consistency check. A spread that is a sizeable fraction of the energy scale
+shows that the result depends on the contraction order, which may reflect
+contraction or search error.
 
-\textbf{An inverse-temperature ladder.} $\beta$ is the most consequential
-parameter and was also the least guidable. If it is too small, the conditional
-probabilities the search branches on say little about the ground state. The
-original interface nonetheless took a scalar whose optimum its own documentation
-conceded to be instance-dependent. \texttt{beta\_ladder} walks an increasing
-schedule in which each rung reuses the previous rung's boundary MPS to start
-variational compression, instead of forming $W\psi$ exactly and truncating it.
-Where boundary-MPS construction dominates (2048-spin instance) a warm-started rung
-is ${\approx}25\%$ faster for identical energies (median paired cold/warm ratios of
-$1.32$ and $1.34$ over five interleaved rounds, or ${\approx}16\%$ over the whole
-ladder). The gain is bounded by the share of the solve spent building boundary
-MPS, so it is smaller wherever the search dominates instead.
+The inverse temperature $\beta$ is the most consequential parameter and was also
+the hardest to choose. If it is too small, the conditional probabilities the
+search branches on say little about the ground state. The original interface
+nonetheless took a scalar whose optimum its own documentation described as
+instance-dependent. \texttt{beta\_ladder} walks an increasing schedule in which
+each rung reuses the previous rung's boundary MPS to start variational
+compression, instead of forming $W\psi$ exactly and truncating it. Where
+boundary-MPS construction dominates (2048-spin instance) a warm-started rung is
+${\approx}25\%$ faster for identical energies (median paired cold/warm ratios of
+$1.32$ and $1.34$ over five interleaved rounds, or ${\approx}16\%$ over the
+whole ladder). The gain is bounded by the share of the solve spent building
+boundary MPS, and it is smaller where the search dominates.
 
-The error measure cannot be pushed arbitrarily far. Warm starting is incompatible
-with it, because a warm start optimizes \emph{within} a fixed bond dimension and
-never truncates, so it reports $\sum\varepsilon\approx0$ whatever its accuracy, its
-error being a variational gap that the log cannot see. Audits therefore have to use
-cold builds, and the package warns when they do not. A second limitation is that
-$\sum\varepsilon$ does not rank solution quality. In Figure~\ref{fig:evr}(c) the
-energy error falls monotonically with $\beta$, reaching the best energy found in
-9 of 10 instances at $\beta=6$, while $\sum\varepsilon$ peaks at $\beta=4$ and
-then falls, because a sharply peaked Boltzmann distribution carries less
-entanglement and truncates more easily. Discarded weight therefore does not order
-solution quality: $\beta=2$ carries almost the lowest $\sum\varepsilon$ of any
-setting measured yet gives the worst energy, while $\beta=4$ carries the highest
-and does better. The quantity bounds what the contraction discarded. It says
-nothing about whether the search found a good state.
+Two limitations bound what the discarded-weight measure can do. Warm starting is
+incompatible with it, because a warm start optimizes \emph{within} a fixed bond
+dimension and never truncates, so it reports $\sum\varepsilon\approx0$ whatever
+its accuracy. Its error is a variational gap that the log cannot see. Therefore,
+one has to use cold builds, and the package warns when they do not. A second
+limitation is that $\sum\varepsilon$ does not rank solution quality. In
+Figure~\ref{fig:evr}(c) the energy error falls monotonically with $\beta$,
+reaching the best energy found in 9 of 10 instances at $\beta=6$, while
+$\sum\varepsilon$ peaks at $\beta=4$ and then falls, because a sharply peaked
+Boltzmann distribution carries less entanglement and truncates more easily.
+$\beta=2$ carries almost the lowest $\sum\varepsilon$ of any setting measured
+yet gives the worst energy, while $\beta=4$ carries the highest and does better.
 
 Figure~\ref{fig:evr}(d) shows that search breadth does not buy diversity. At
 $M=1024$, forty-nine of the fifty runs returned a single valley, with states
