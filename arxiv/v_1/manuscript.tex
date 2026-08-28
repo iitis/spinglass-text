@@ -202,8 +202,9 @@ boundary MPS, and it is smaller where the search dominates.
 Two limitations bound what the discarded-weight measure can do. Warm starting is
 incompatible with it, because a warm start optimizes \emph{within} a fixed bond
 dimension and never truncates, so it reports $\sum\varepsilon\approx0$ whatever
-its accuracy. Its error is a variational gap that the log cannot see. Therefore,
-one has to use cold builds, and the package warns when they do not. A second
+its accuracy. Its error is a variational gap that the log cannot see. The
+$\sum\varepsilon$ is therefore meaningful only for cold builds, and the package
+warns when \texttt{max\_discarded} is combined with a warm start. A second
 limitation is that $\sum\varepsilon$ does not rank solution quality. In
 Figure~\ref{fig:evr}(c) the energy error falls monotonically with $\beta$,
 reaching the best energy found in 9 of 10 instances at $\beta=6$, while
@@ -214,47 +215,44 @@ yet gives the worst energy, while $\beta=4$ carries the highest and does better.
 
 Figure~\ref{fig:evr}(d) shows that search breadth does not buy diversity. At
 $M=1024$, forty-nine of the fifty runs returned a single valley, with states
-differing from the best by tens of spins in most runs and never by more than $399$
-out of $2500$, where a diversity count would demand $625$. The one exception
-($\beta{=}8$, instance~1) is a degraded contraction rather than a genuine second
-optimum (Figure~\ref{fig:evr} caption). The metric of the original article scores
-the exact global spin flip as two solutions. These instances carry no local fields,
-so $E(\sigma)=E(-\sigma)$ identically, and the mirror sits at distance $N$ for free.
-Changing the contraction order does move the solver between valleys. One state from
-each of the eight transformations gives two or three mutually distant solutions on
-four of five instances, with pairwise distances reaching $1249$ of a possible
-$1250$. This argues for sweeping the transformations on grounds independent of
-energy, and it holds even where the transformations agree on the energy to several
-digits.
+differing from the best by tens of spins in most runs and never by more than
+$399$ out of $2500$, where a diversity count would demand $625$. The one
+exception ($\beta{=}8$, instance~1) is a degraded contraction, see
+Figure~\ref{fig:evr} and its caption. The metric of the original article scores
+the exact global spin flip as two solutions, and the mirror sits at distance $N$
+for free (Figure~\ref{fig:evr} and its caption). Changing the contraction order
+does move the solver between valleys. One state from each of the eight
+transformations gives two or three mutually distant solutions on four of five
+instances, with pairwise distances reaching $1249$ of a possible $1250$. This
+argues for sweeping the transformations on grounds independent of energy. It
+holds even where the transformations agree on the energy to several digits.
 
-\textbf{Concurrent transformation sweeps.} The standard protocol solves each
-instance once per lattice transformation, a loop that previously lived in user code.
-\texttt{sweep\_transformations} now owns that loop and seeds each transformation
-deterministically, which matters because the \texttt{Zipper} strategy draws a random
-sketch and results would otherwise depend on task scheduling. It also isolates
-failures and reports the diagnostics described above. The limit on fanning out is
-device memory, which depends on the instance rather than on the machine, so
-concurrency is gated by a byte budget. A calibration solve measures peak usage, and
-each admitted solve carries its reservation as a task-scoped value, so kernel
-batches are sized against \emph{its} slice rather than against the shared pool.
-Without that last step the reservation would be advisory only, because every
-concurrent solve would measure the same free pool and batch as though it owned all
-of it.
+The standard protocol solves each instance once per lattice transformation, a
+loop that previously lived in user code. \texttt{sweep\_transformations} now
+owns that loop and seeds each transformation deterministically, since the
+\texttt{Zipper} strategy draws a random sketch and results would otherwise
+depend on task scheduling. It also isolates failures and reports the diagnostics
+described above. Device memory sets the limit on fanning out. It depends on the
+instance, not on the machine, so concurrency is gated by a byte budget. A
+calibration solve measures peak usage, and each admitted solve carries its
+reservation as a task-scoped value, so kernel batches are sized against
+\emph{its} slice rather than against the shared pool. Without that last step the
+reservation would be advisory only: every concurrent solve would measure the
+same free pool and batch as though it owned all of it.
 
 Concurrency pays on both devices in Table~\ref{tab:sweep}. On CPU the sweep
-scales monotonically, reaching $3.1\times$ and $1.6\times$ at eight-way on the two
-cases. On a single GPU it helps as well, up to $1.7\times$ at two-way and
-$1.4\times$ at four-way. A single admitted solve ($c{=}1$) is a slight net loss,
-because the sweep's fixed set-up cost is not amortized when nothing overlaps, and the
-gain therefore begins at $c{\ge}2$. Energies agree across every admitted solve.
+scales monotonically, reaching $3.1\times$ and $1.6\times$ at eight-way on the
+two cases. On a single GPU it helps as well, up to $1.7\times$ at two-way and
+$1.4\times$ at four-way. A single admitted solve ($c{=}1$) is a slight net loss:
+the sweep's fixed set-up cost is not amortized when nothing overlaps. Energies
+agree across every admitted solve.
 
-One point of method deserves mention, because it cost us a wrong result before we
-caught it. Timing the serial arm immediately after a concurrent warm-up leaves the
-CUDA memory pool in a state that inflated our serial baseline by up to $2.7\times$,
-which is enough to distort any speed-up ratio measured against it. We therefore
-interleave the two arms and reclaim fully before each timed section. The ratios we
-quote are paired per-round ratios, and any performance claim about this solver needs
-the same care.
+One point of method cost us a wrong result. Timing the serial arm immediately
+after a concurrent warm-up leaves the CUDA memory pool in a state that inflated
+our serial baseline by up to $2.7\times$, which is enough to distort any
+speed-up ratio measured against it. We therefore interleave the two arms and
+reclaim fully before each timed section. Any timing of this solver needs the
+same care.
 
 \begin{table}[t]
 \small
@@ -280,56 +278,50 @@ Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.83 & 1.22 & \textbf{1.43} 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/quality.pdf}
-\caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension 8,
-on CPU. (a) Time to solution against relative energy error as the search breadth
-$M=$~\texttt{max\_states} varies over $16$--$1024$. Points are individual instances
-and the line is their median. (b) The same runs resolved per instance. (c) Median
-energy error and median discarded weight $\sum_i\varepsilon_i$ against $\beta$, with
-annotations counting the instances that reached the best energy found.
-$E_{\mathrm{best}}$ is
-the lowest energy over all settings here, not a certified optimum, so a zero error
-means ``best found'', not ``optimal''. The two curves in (c) diverge: quality
-improves monotonically with $\beta$ while discarded weight peaks at $\beta=4$ and
-then falls. (d) How far apart the returned solutions are, at $M=1024$. These
-instances carry no local fields, so $E(\sigma)=E(-\sigma)$ exactly and every state
-has a degenerate mirror at Hamming distance $N$, which is why distances are reported
-as quotient distances $\min(d,N-d)$ on a space of diameter $N/2$. Band and line are
-medians over the ten instances of the $50$th, $90$th and $100$th percentile of the
-distance from each returned state to the best one. The whole returned set is a
-single tight cluster, a factor of eight to sixty below the $N/4$ threshold a
-diversity count would apply. The one point clearing it ($\beta=8$, instance 1) is a
-degraded contraction rather than a second optimum: its energy is $8$ above that
-instance's best and it fails to return even the exact mirror. The square marker
-asks the same question across contraction orders instead: one state from each of
-the eight lattice transformations at $\beta=4$, taking the median over five
-instances of the pairwise minimum, median and maximum. Eight states from eight
-orders span the configuration space, whereas $1024$ states from a single order do
-not.}
+\caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension
+8, on CPU. (a) Time to solution against relative energy error as the search
+breadth $M=$~\texttt{max\_states} varies over $16$--$1024$, points are
+individual instances, the line their median. (b) The same runs per instance. (c)
+Median energy error and median discarded weight $\sum_i\varepsilon_i$ against
+$\beta$, annotations count the instances that reached the best energy found.
+$E_{\mathrm{best}}$ is the lowest energy over all settings shown, not a
+certified optimum, so zero error means best found rather than optimal. (d)
+Spread of the returned solutions at $M=1024$. These instances carry no local
+fields, so $E(\sigma)=E(-\sigma)$ and every state has a degenerate mirror at
+Hamming distance $N$; distances are therefore quotient distances $\min(d,N-d)$
+on a space of diameter $N/2$. Band and line give medians over the ten instances
+of the $50$th, $90$th and $100$th percentile of the distance from each returned
+state to the best one, all a factor of eight to sixty below the $N/4$ threshold.
+The single point above that threshold ($\beta=8$, instance 1) is a degraded
+contraction rather than a second optimum: its energy is $8$ above that
+instance's best and it does not return even the exact mirror. Square markers
+repeat the measurement across contraction orders, taking one state from each of
+the eight lattice transformations at $\beta=4$ and reporting the median over
+five instances of the pairwise minimum, median and maximum.}
 \label{fig:evr}
 \end{figure}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.62\linewidth]{figures/crossover.pdf}
-\caption{Where GPU execution begins to pay: CPU/GPU wall-clock ratio on identical
-configurations, so values below one mean the host is faster. The device wins only
-once both the instance and the bond dimension are large. Data as in
-Table~\ref{tab:cross}.}
+\caption{CPU/GPU wall-clock ratio on identical configurations, so values below
+one mean the host is faster. The device wins only once both the instance and the
+bond dimension are large. Data as in Table~\ref{tab:cross}.}
 \label{fig:cross}
 \end{figure}
 
-\textbf{When the GPU is worth using.} The original article recommends the GPU for
-its larger examples without qualification. Solving identical configurations on each
-device (Figure~\ref{fig:cross}, Table~\ref{tab:cross}) shows that this holds only
-above a threshold that is easy to fall below. The host is ${\approx}45\times$ faster
-at 36 spins and, at 2048 spins and bond 16, still ${\approx}1.6\times$ faster in the
-dense case and ${\approx}1.3\times$ faster in the sparse one. The device overtakes it
-only in the largest sparse case, 2048 spins at bond 32, where the GPU is
-${\approx}1.4\times$ faster. The dense case at that size still favours the host by
-${\approx}10\%$, and energies agree in every cell. On the tested Xeon/H100 system the
-CPU is therefore preferable for exploratory work in the smaller or dense
-configurations, and the device is worth using in the D-Wave-scale sparse regime at
-large bond.
+The original article recommends the GPU for its larger examples without
+qualification. Solving identical configurations on each device
+(Figure~\ref{fig:cross}, Table~\ref{tab:cross}) shows that this holds only for
+the largest configurations we measured. The host is ${\approx}45\times$ faster
+at 36 spins and, at 2048 spins and bond 16, still ${\approx}1.6\times$ faster in
+the dense case and ${\approx}1.3\times$ faster in the sparse one. The device
+overtakes it only in the largest sparse case, 2048 spins at bond 32, where the
+GPU is ${\approx}1.4\times$ faster. The dense case at that size still favours
+the host by ${\approx}10\%$, and energies agree in every cell. On the tested
+Xeon/H100 system the CPU is therefore preferable for exploratory work in the
+smaller or dense configurations, and the device is worth using in the
+D-Wave-scale sparse regime at large bond dimensions.
 
 \begin{table}[t]
 \small
@@ -357,13 +349,13 @@ Spins & $D{=}8$ & $D{=}16$ & $D{=}32$ & $D{=}64$ \\
 \centering
 \includegraphics[width=\linewidth]{figures/allocation.pdf}
 \caption{Allocated memory before and after the two allocation changes, on a
-2048-spin bond-32 solve, with percentages giving the reduction. ``states'' is the
-matrix-backed branched configuration set and ``temp.'' the off-heap contraction
-temporaries. The temporaries change removes about two-thirds of the CPU heap. The
-states change is small in \emph{bytes} because its benefit is a reduced live-object
-count rather than a reduced volume. The post-change allocation totals were
-reproduced on both tested systems, and the H100 run gives 32.3~GiB on CPU and
-24.1~GiB on GPU.}
+2048-spin bond-32 solve, with percentages giving the reduction. ``states'' is
+the matrix-backed branched configuration set and ``temp.'' the off-heap
+contraction temporaries. The temporaries change removes about two-thirds of the
+CPU heap. The states change is small in \emph{bytes} because its benefit is a
+reduced live-object count, not a reduced volume. The post-change allocation
+totals were reproduced on both tested systems, and the H100 run gives 32.3~GiB
+on CPU and 24.1~GiB on GPU.}
 \label{fig:alloc}
 \end{figure}
 
