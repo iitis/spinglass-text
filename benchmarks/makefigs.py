@@ -34,7 +34,10 @@ matplotlib.rcParams.update({
     "axes.linewidth": 0.6,
     "lines.linewidth": 1.1,
     "grid.linewidth": 0.4,
-    "legend.frameon": False,
+    "legend.frameon": True,
+    "legend.framealpha": 0.93,
+    "legend.facecolor": "white",
+    "legend.edgecolor": "0.8",
 })
 import matplotlib.pyplot as plt  # noqa: E402
 
@@ -132,8 +135,10 @@ def figure_quality():
     import matplotlib.patheffects as pe
     for b, y, h in zip(betas, q, hit):
         if h:
+            last = b == betas[-1]
             cx.annotate(rf"${h}/{n_inst}$", (b, y), textcoords="offset points",
-                        xytext=(0, 8), ha="center", va="bottom", fontsize=6,
+                        xytext=(-2 if last else 0, 8),
+                        ha="right" if last else "center", va="bottom", fontsize=6,
                         color=SEQ[-1], zorder=6,
                         path_effects=[pe.withStroke(linewidth=1.6, foreground="white")])
     cx.set_yscale("symlog", linthresh=LINTHRESH)
@@ -151,7 +156,7 @@ def figure_quality():
     dx.tick_params(axis="y", colors=ACCENT)
     h1, l1 = cx.get_legend_handles_labels()
     h2, l2 = dx.get_legend_handles_labels()
-    cx.legend(h1 + h2, l1 + l2, loc="center left", handletextpad=0.3, borderpad=0.2)
+    cx.legend(h1 + h2, l1 + l2, loc="upper right", handletextpad=0.3, borderpad=0.2)
 
     # (d) how far apart are the returned solutions, really?
     #
@@ -178,7 +183,7 @@ def figure_quality():
             ex.plot([b], [d], "x", color=ACCENT, ms=5, mew=1.2, zorder=6)
         if out:
             ex.annotate(r"degraded solve", (out[0][0], out[0][1]), fontsize=6,
-                        color=ACCENT, textcoords="offset points", xytext=(-3, 6),
+                        color=ACCENT, textcoords="offset points", xytext=(-8, 3),
                         ha="right", va="bottom")
         ex.axhline(N / 4, color=ACCENT, lw=0.9, ls="--")
         ex.annotate(r"distinct-valley threshold $N/4$", (dbetas[0], N / 4),
@@ -244,7 +249,11 @@ def figure_crossover():
     ax.set_xlabel(r"bond dimension $D$")
     ax.set_ylabel(r"CPU / GPU wall-clock ratio")
     ax.grid(alpha=0.25, which="both")
-    ax.legend(loc="center right", handletextpad=0.4, labelspacing=0.25)
+    # Two short columns in the empty band between the flat 36-spin line and the
+    # 128-spin dense curve: "lower right" would cover the 36-spin line itself.
+    ax.legend(loc="lower left", bbox_to_anchor=(0.02, 0.10), ncol=2,
+              handletextpad=0.4, labelspacing=0.25, columnspacing=1.0,
+              borderpad=0.3)
     fig.tight_layout(pad=0.4)
     save(fig, "crossover")
 
@@ -277,6 +286,7 @@ def figure_alloc():
     ax.set_title(r"allocated [GiB]", loc="left")
     ax.grid(alpha=0.25, axis="y")
     ax.set_axisbelow(True)
+    ax.set_ylim(top=max(before) * 1.22)   # headroom so the legend clears the bars
     ax.legend(loc="upper right", handletextpad=0.4)
     fig.tight_layout(pad=0.4)
     save(fig, "allocation")
