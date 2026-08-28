@@ -147,6 +147,6 @@ threads), branch `lp/monorepo`, base commit `a07a54c` plus the update.
 | `crossover_raw.csv`, `concurrency_raw.csv`, `alloc_raw.csv` (after-arms) | Xeon Platinum 8462Y+ + one NVIDIA H100 |
 | `sweep50_cpu.csv`, `div3.csv`, `div3_extra.csv`, `xtransform.csv` | RTX 5080 dev machine |
 | `eps_stats.csv` | device-independent (verified CPU = GPU) |
-| `ladder_raw.csv` | dev machine named in its header comment (timings; see above) |
+| `ladder_raw.csv` | Xeon Platinum 8462Y+ (H100 server), 5 interleaved rounds |
 
 Pin the package to the tagged `v2.0.0` release for a citable run.
