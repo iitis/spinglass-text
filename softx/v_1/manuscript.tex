@@ -357,58 +357,51 @@ on CPU and 24.1~GiB on GPU.}
 \label{fig:alloc}
 \end{figure}
 
-\textbf{Where the time goes.} Profiling on the tested RTX~5080 configuration
-explains both tables and redirects the optimizations one would otherwise attempt
-first. On the profiled 128-spin solve the bottleneck was the host rather than the
-device. Host-side CUDA API calls account for only about a quarter of wall time, and
-most of the rest is host-side Julia work. Being host-bound helps to explain why
-the CPU remains competitive across the measured crossover. Accelerating the tensor work removes none
-of the host-side bookkeeping.
+\textbf{Profiling and allocation.} On a profiled 128-spin solve on the tested
+RTX~5080 configuration, the host was the bottleneck, not the device. Host-side
+CUDA API calls account for only about a quarter of wall time, and most of the
+rest is host-side Julia work. Being host-bound keeps the CPU competitive across
+the measured crossover, and accelerating the tensor work removes none of the
+host-side bookkeeping.
 
-An idle device invites kernel-level batching. We did not pursue it, because
-eliminating the entire CUDA API share would cap the gain at ${\approx}1.3\times$,
-whereas the host allocation load was reachable directly. One line,
-\texttt{branch\_states} in the branch-and-bound search, accounted for 52.7\% of the
-bytes the profiled 128-spin solve allocated, and two changes follow from that
-(Figure~\ref{fig:alloc}). The branched-configuration set is now backed by a single
-matrix rather than tens of thousands of small vectors per call, cutting the number
-of live objects sharply. Its allocated \emph{bytes} fall only ${\approx}4\%$ on the
-large solve's device arm and ${\approx}1\%$ on its host arm, but the object count
-that drives collection falls far more.
-Separately, the multi-tensor contraction temporaries were moved off the collected
-heap onto explicit allocation, cutting a 2048-spin bond-32 solve's allocated bytes
-by about two thirds (90.9 to 32~GiB on CPU). The post-change allocation totals were
-reproduced on both tested systems, and both reductions were measured in a full solve,
-since the explicit allocator is no faster in isolation and pays only through the
-allocations it removes from the collected heap.
+With the device mostly idle, kernel-level batching is the obvious next step. We
+did not pursue it, because eliminating the entire CUDA API share would cap the
+gain at ${\approx}1.3\times$, whereas the host allocation load was reachable
+directly. One line, \texttt{branch\_states} in the branch-and-bound search,
+accounted for 52.7\% of the bytes the profiled 128-spin solve allocated, and two
+changes follow from that (Figure~\ref{fig:alloc}). The branched-configuration
+set is now backed by a single matrix rather than tens of thousands of small
+vectors per call, cutting the number of live objects sharply. Its allocated
+\emph{bytes} fall only ${\approx}4\%$ on the large solve's device arm and
+${\approx}1\%$ on its host arm, but the object count that drives collection
+falls far more. Separately, the multi-tensor contraction temporaries were moved
+off the collected heap onto explicit allocation, cutting a 2048-spin bond-32
+solve's allocated bytes by about two thirds (90.9 to 32~GiB on CPU). Both
+reductions were measured in a full solve, since the explicit allocator is no
+faster in isolation and pays only through the allocations it removes from the
+collected heap.
 
 \textbf{Impact, limitations and outlook.} Contraction error is now observable,
-which lets a practitioner detect substantial contraction loss on a problem where no
-exact answer is available, and that is the regime the method is intended for. The
-measure diagnoses the contraction, and it does not by itself establish overall
-solver convergence or solution quality. The consolidation and the deprecation shims
-make the published interface reproducible, and shipping the benchmark instances
-closes a gap in that reproducibility that predates this update. The raw per-run
-data and figure scripts behind the figures and tables, together with runnable
-drivers for the crossover, concurrency, diversity, energy-vs-runtime,
-contraction-error and $\beta$-ladder results, are provided as supplementary
-material accompanying this article in the \texttt{benchmarks/} directory. The allocation figure reports allocated
-bytes. Its post-change values were reproduced on both tested systems, while its
-pre-change values are recorded measurements of the superseded code.
+so substantial contraction loss can be detected on problems where no exact
+answer is available, the regime the method targets. The consolidation and the
+deprecation shims make the published interface reproducible, and shipping the
+benchmark instances closes a gap in that reproducibility that predates this
+update. The raw per-run data and figure scripts behind the figures and tables,
+together with runnable drivers for the crossover, concurrency, diversity,
+energy-vs-runtime, contraction-error and $\beta$-ladder results, are provided as
+supplementary material accompanying this article in the \texttt{benchmarks/}
+directory. The allocation figure's pre-change values are recorded measurements
+of the superseded code.
 
-Several limitations remain. Warm starting and the discarded-weight measure cannot be
-combined, and warm starting currently covers only the bottom boundary MPS, so
-layouts that build the top boundary do not benefit on those rows. The error measure
-also answers a narrower question than one might hope. It bounds what the contraction
-discarded, and our own attempt to use it for selecting $\beta$ failed, which is why
-the package now documents it as a diagnostic rather than a criterion.
+Warm starting currently covers only the bottom boundary MPS, so layouts that
+build the top boundary do not benefit on those rows. $\sum\varepsilon$ did not
+select $\beta$ in our tests; hence the package documents it as a diagnostic
+rather than a criterion.
 
-The remaining headroom is on the host side rather than in the tensor kernels. The
-branch-and-bound bookkeeping still dominates allocation even after the change
-described above, and the sparse contraction path, which is where the device wins
-according to Table~\ref{tab:cross}, has not received the allocator treatment that
-the dense one now has. Both look more promising than the kernel batching that an
-idle device suggests.
+
+%% Flush pending floats so every figure precedes the reference list; without
+%% this the [t] figures spill past the bibliography.
+\clearpage
 
 \section*{Acknowledgements}
 \label{acknowledgements}
