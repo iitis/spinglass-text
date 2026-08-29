@@ -1,0 +1,15 @@
+# 128 spins, bond 32, dense, Zipper/SquareSingleNode, beta=3, gpu, seed 1
+metric,value,unit
+wall_s,0.904802,s
+energy,-210.933,-
+profiled_wall_s,1.30781,s
+gpu_busy_s,0.0856991,s
+gpu_busy_frac,0.0655285,fraction
+host_cuda_api_s,0.352523,s
+host_cuda_api_frac,0.269552,fraction
+batching_cap_x,1.36902,speed-up
+device_activities,35945,count
+host_api_calls,1.52636e+06,count
+sampled_alloc_bytes,5.19457e+06,bytes
+alloc_sample_rate,0.02,fraction
+top_alloc_line_frac,0.151648,fraction
