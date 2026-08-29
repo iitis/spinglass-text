@@ -44,6 +44,7 @@ drivers can also be run by hand via their `ENV` variables (see each file's heade
 | `xtransform.jl` | driver: pairwise valley distance across lattice transformations → `xtransform.csv` |
 | `eps_stats.jl` | driver: contraction-error diagnostics (Σε, max ε, bond-limited count, kept/offered) on `128power` at D=4/32 → `eps_stats.csv` |
 | `ladder.jl` | driver: β-ladder cold vs warm-started boundary MPS (per-rung wall time, Σε, energy), `2048power` bond 16 → `ladder_raw.csv` |
+| `profile.jl` | driver: host/device attribution of one solve (GPU busy, host CUDA-API share, kernel-batching ceiling) and the top allocation line → `profile.csv` |
 | `makefigs.py` | renders the CSVs to `../figures/{quality,crossover,allocation}.{pdf,png}` |
 | `plot50.py` | standalone renderer for `energy_vs_runtime.{pdf,png}` from `sweep50_cpu.csv` (superseded by `makefigs.py`; not used by the manuscript) |
 | `energy_vs_runtime.{pdf,png}` | output of `plot50.py` |
@@ -65,6 +66,11 @@ recovered 50×50 instances from the package's `benchmark/instances/square_50x50/
   1e-12`, the manuscript's $10^{-12}$ reporting threshold), giving Σε = 3.1e-4 / 5.6e-14,
   18-of-18 vs 0-of-4 bond-limited, 108/307 and 192/592 kept/offered, both arms
   E = −210.933334. Deterministic and device-independent (CPU = GPU).
+- **Prose, profiling**: `profile.csv` — on the H100, GPU busy 6.6%, host CUDA-API
+  share 27.0% (the manuscript's "about a quarter"), remainder 66.5% host-side
+  Julia work, kernel-batching ceiling 1.37× (the manuscript's ≈1.4×), 35,945
+  device activities. Profiling adds overhead, so the fractions are taken against
+  the profiled span, not the unprofiled `wall_s`.
 - **Prose, β ladder**: `ladder_raw.csv`, five interleaved rounds on the Xeon
   Platinum 8462Y+ (named in the header comment; the machine of Tables 1–2).
   Energies (−3334.0801, −3336.7734, −3336.7734) and the cold-arm Σε (3.2e-3,
@@ -113,16 +119,14 @@ are not driver-regenerated; the committed results record the tested environments
 
 ## Recorded measurements (not re-runnable from v2.0.0)
 
-These back manuscript prose but measure the **superseded code** or one-off
-profiler sessions, so no driver of the current release can regenerate them.
-All were taken on the RTX 5080 dev machine (20 logical cores, BLAS on 12
-threads), branch `lp/monorepo`, base commit `a07a54c` plus the update.
+These back manuscript prose but measure the **superseded code**, so no driver of
+the current release can regenerate them: the line or the code state they describe
+no longer exists. They were taken on the RTX 5080 dev machine (20 logical cores,
+BLAS on 12 threads), branch `lp/monorepo`, base commit `a07a54c` plus the update.
+Allocated **bytes** do not depend on the host or device model, which is the same
+argument the allocation figure rests on, so the byte shares below are not
+5080-specific; only the concurrency result at the end is.
 
-- **Profiling attribution** (`CUDA.@profile` + Julia samplers, one solve of
-  `128power`, bond 32, `Zipper`/`Dense`, 1.73 s wall): GPU busy 101 ms =
-  **5.85%**; host time inside CUDA API calls 398 ms = **23%**, which is the
-  manuscript's "about a quarter" and caps kernel-batching gains at ≈1.3×;
-  remainder ≈71% host-side Julia work; ~34,500 kernel launches (mean ~3 µs).
 - **Allocation attribution** (`Profile.Allocs`, 2% sampling, pre-change code):
   the `branch_states` line = **52.7%** of allocated bytes at 128 spins (70.9%
   at 2048 spins on the GPU path). This is the number that motivated the two
@@ -146,7 +150,9 @@ threads), branch `lp/monorepo`, base commit `a07a54c` plus the update.
 |---|---|
 | `crossover_raw.csv`, `concurrency_raw.csv`, `alloc_raw.csv` (after-arms) | Xeon Platinum 8462Y+ + one NVIDIA H100 |
 | `sweep50_cpu.csv`, `div3.csv`, `div3_extra.csv` | Xeon Platinum 8462Y+ (H100 server), CPU |
-| `xtransform.csv` | RTX 5080 dev machine, CPU (not yet re-run; deterministic, so a re-run should reproduce it) |
+| `xtransform.csv` | reproduced byte-for-byte on the H100 server (see `xtransform_multithread.csv`) |
+| `xtransform_multithread.csv` | H100 server, multithreaded re-run; byte-identical to `xtransform.csv`, kept as the cross-machine determinism check. `makefigs.py` reads `xtransform.csv` |
+| `profile.csv` | Xeon Platinum 8462Y+ + one NVIDIA H100 |
 | `eps_stats.csv` | device-independent (verified CPU = GPU) |
 | `ladder_raw.csv` | Xeon Platinum 8462Y+ (H100 server), 5 interleaved rounds |
 

@@ -280,7 +280,7 @@ Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.83 & 1.22 & \textbf{1.43} 
 \includegraphics[width=\linewidth]{figures/quality.pdf}
 \caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension
 8, on CPU. (a) Time to solution against relative energy error as the search
-breadth $M=$~\texttt{max\_states} varies over $16$--$1024$, points are
+breadth $M=$~\texttt{max\_states} varies over $16$--$1024$. points are
 individual instances, the line their median. (b) The same runs per instance. (c)
 Median energy error and median discarded weight $\sum_i\varepsilon_i$ against
 $\beta$, annotations count the instances that reached the best energy found.
@@ -359,28 +359,27 @@ on CPU and 24.1~GiB on GPU.}
 \label{fig:alloc}
 \end{figure}
 
-\textbf{Profiling and allocation.} On a profiled 128-spin solve on the tested
-RTX~5080 configuration, the host was the bottleneck, not the device. Host-side
-CUDA API calls account for only about a quarter of wall time, and most of the
-rest is host-side Julia work. Being host-bound keeps the CPU competitive across
-the measured crossover, and accelerating the tensor work removes none of the
-host-side bookkeeping.
+\textbf{Profiling and allocation.} On a profiled 128-spin solve the host was the
+bottleneck, not the device. Host-side CUDA API calls account for only about a
+quarter of wall time, and most of the rest is host-side Julia work. Being
+host-bound keeps the CPU competitive across the measured crossover, and
+accelerating the tensor work removes none of the host-side bookkeeping.
 
 With the device mostly idle, kernel-level batching is the obvious next step. We
 did not pursue it, because eliminating the entire CUDA API share would cap the
-gain at ${\approx}1.3\times$, whereas the host allocation load was reachable
-directly. One line, \texttt{branch\_states} in the branch-and-bound search,
-accounted for 52.7\% of the bytes the profiled 128-spin solve allocated, and two
-changes follow from that (Figure~\ref{fig:alloc}). The branched-configuration
-set is now backed by a single matrix rather than tens of thousands of small
-vectors per call, cutting the number of live objects sharply. Its allocated
-\emph{bytes} fall only ${\approx}4\%$ on the large solve's device arm and
-${\approx}1\%$ on its host arm, but the object count that drives collection
-falls far more. Separately, the multi-tensor contraction temporaries were moved
-off the collected heap onto explicit allocation, cutting a 2048-spin bond-32
-solve's allocated bytes by about two thirds (90.9 to 32~GiB on CPU). Both
-reductions were measured in a full solve, since the explicit allocator is no
-faster in isolation and pays only through the allocations it removes from the
+gain at ${\approx}1.4\times$, whereas the host allocation load was reachable
+directly. In the code as published, one line, \texttt{branch\_states} in the
+branch-and-bound search, accounted for 52.7\% of the bytes a 128-spin solve
+allocated, and two changes follow from that (Figure~\ref{fig:alloc}). The
+branched-configuration set is now backed by a single matrix rather than tens of
+thousands of small vectors per call, cutting the number of live objects sharply.
+Its allocated \emph{bytes} fall only ${\approx}4\%$ on the large solve's device
+arm and ${\approx}1\%$ on its host arm, but the object count that drives
+collection falls far more. Separately, the multi-tensor contraction temporaries
+were moved off the collected heap onto explicit allocation, cutting a 2048-spin
+bond-32 solve's allocated bytes by about two thirds (90.9 to 32~GiB on CPU).
+Both reductions were measured in a full solve, since the explicit allocator is
+no faster in isolation and pays only through the allocations it removes from the
 collected heap.
 
 \textbf{Impact, limitations and outlook.} Contraction error is now observable,
@@ -399,6 +398,7 @@ Warm starting currently covers only the bottom boundary MPS, so layouts that
 build the top boundary do not benefit on those rows. $\sum\varepsilon$ did not
 select $\beta$ in our tests; hence the package documents it as a diagnostic
 rather than a criterion.
+
 
 %% Flush pending floats so every figure precedes the reference list; without
 %% this the [t] figures spill past the bibliography.

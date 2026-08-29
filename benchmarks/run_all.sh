@@ -105,6 +105,10 @@ echo "-- contraction-error diagnostics (eps_stats) --"
 rm -f "$HERE/eps_stats.csv"
 BONDS=4,32 SEED=$SEED OUT="$HERE/eps_stats.csv" CUDA_VISIBLE_DEVICES="" run "$HERE/eps_stats.jl" \
   || echo "  !! eps_stats failed"
+echo "-- host/device profile (128power, bond 32, GPU) --"
+rm -f "$HERE/profile.csv"
+DEVICE=gpu SPINS=128 BOND=32 SEED=$SEED OUT="$HERE/profile.csv" \
+  CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/profile.jl" || echo "  !! profile failed"
 echo "-- beta-ladder warm start (2048power, CPU) --"
 rm -f "$HERE/ladder_raw.csv"
 ROUNDS=5 SEED=$SEED OUT="$HERE/ladder_raw.csv" CUDA_VISIBLE_DEVICES="" run "$HERE/ladder.jl" \

@@ -140,6 +140,12 @@ end
 open(OUT, "w") do io
     println(io, "# ", SPINS, " spins, bond ", BOND, ", ", SPARSITY, ", Zipper/SquareSingleNode, beta=3, ",
                 DEVICE, ", seed ", SEED)
+    # The top allocation sites, as comments: the value column stays numeric.
+    if tot > 0
+        for (k, v) in sort!(collect(bytes); by = last, rev = true)[1:min(5, length(bytes))]
+            @printf(io, "# alloc %5.1f%% %s\n", 100v / tot, k)
+        end
+    end
     println(io, "metric,value,unit")
     for (k, v, u) in rows
         @printf(io, "%s,%.6g,%s\n", k, v, u)
