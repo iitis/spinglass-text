@@ -34,10 +34,9 @@ cites it as supplementary material.
 
 Every benchmark is runnable from `benchmarks/` and its results are committed
 there as CSVs; `benchmarks/makefigs.py` regenerates the manuscript figures into
-`figures/`. The few values that cannot be re-run from v2.0.0 by definition
-(profiling attribution and the pre-change arms of before/after comparisons, both
-of which measure the superseded code) are recorded with their protocol in
-`benchmarks/README.md`.
+`figures/`. The few values that cannot be re-run from v2.0.0 by definition (the
+pre-change arms of the before/after comparisons, which measure the superseded
+code) are recorded with their protocol in `benchmarks/README.md`.
 
 Building needs `elsarticle.cls`, present in TeX Live. Both versions compile with
 **zero** undefined references or citations.
@@ -92,16 +91,15 @@ Every figure and table is reproducible from `benchmarks/`: both tables recompute
 bit-for-bit from the committed raw CSVs via the summarizers, and `makefigs.py`
 regenerates the figures byte-identically from the committed CSVs. The
 contraction-error examples and the β-ladder result quoted in prose have their own
-drivers (`eps_stats.jl`, `ladder.jl`) with committed results. What remains
-recorded-only (with protocol, in `benchmarks/README.md`) is what cannot be re-run
-from v2.0.0: the profiling attribution (52.7% allocation share, ~quarter CUDA-API
-share and the ≈1.3× cap), the pre-change arms of the allocation comparison, and
-the 2.7× warm-up caution. All of those are measurements of the superseded code, or
-one-off profiler sessions.
+drivers (`eps_stats.jl`, `ladder.jl`, `profile.jl`) with committed results. What
+remains recorded-only (with protocol, in `benchmarks/README.md`) is what cannot be
+re-run from v2.0.0: the 52.7% allocation share of the `branch_states` line as
+published, the pre-change arms of the allocation comparison, and the 2.7× warm-up
+caution. All of those measure the superseded code.
 
 - **The single-GPU concurrency result is device-dependent, and the manuscript says
   which device.** On the H100 the concurrent sweep pays (1.69×/1.44× at c=2/c=4,
-  Table 1); on a consumer RTX 5080 it never beat the serial loop (0.68–0.94×,
+  Table 1); on a consumer GPU it never beat the serial loop (0.68–0.94×,
   benchmarks/README.md “Recorded measurements”), which is why the package keeps `concurrency = :auto` at 1 on
   GPU. Table 1's caption names the H100.
 - **The methodological caution is included on purpose.** An earlier version of our
@@ -129,6 +127,6 @@ Deliberately out of scope, and listed here so they are not forgotten:
 **Kernel-level batching across transformations was investigated and dropped**, and
 the manuscript says so rather than listing it as future work. The device sits mostly
 idle, but host-side CUDA API calls account for only about a quarter of wall time, so
-eliminating them entirely caps at ≈1.3×; the majority of a solve is host-side Julia
+eliminating them entirely caps at ≈1.4×; the majority of a solve is host-side Julia
 work. Reducing allocation returned more, for far less effort. Recorded here because
 "batch the kernels" is the intuitive next step and the measurements say otherwise.

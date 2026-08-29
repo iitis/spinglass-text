@@ -121,11 +121,12 @@ are not driver-regenerated; the committed results record the tested environments
 
 These back manuscript prose but measure the **superseded code**, so no driver of
 the current release can regenerate them: the line or the code state they describe
-no longer exists. They were taken on the RTX 5080 dev machine (20 logical cores,
-BLAS on 12 threads), branch `lp/monorepo`, base commit `a07a54c` plus the update.
-Allocated **bytes** do not depend on the host or device model, which is the same
-argument the allocation figure rests on, so the byte shares below are not
-5080-specific; only the concurrency result at the end is.
+no longer exists. They were taken on a development machine (not the H100 server),
+branch `lp/monorepo`, base commit `a07a54c` plus the update. Allocated **bytes** do
+not depend on the host or device model, which is the same argument the allocation
+figure rests on, so the byte shares below carry over; the two timing figures (the
+≈7% per-call cost and the consumer-GPU concurrency result) are indicative of that
+machine only.
 
 - **Allocation attribution** (`Profile.Allocs`, 2% sampling, pre-change code):
   the `branch_states` line = **52.7%** of allocated bytes at 128 spins (70.9%
@@ -137,7 +138,7 @@ argument the allocation figure rests on, so the byte shares below are not
   behind the manuscript's "no faster in isolation" comes from the same pre-change
   series: `ManualAllocator` was ≈7% *slower* per call, while cutting one
   contraction's footprint from 257.5 MiB to 0.5 MiB.
-- **RTX 5080 concurrency (negative result)**: on the consumer GPU the
+- **Consumer-GPU concurrency (negative result)**: on a consumer GPU the
   concurrent sweep never beat the serial loop (0.68–0.94× at every admission
   level, ~10% device utilization; the limit is CUDA API/allocator
   serialization with this solver's many small kernels). This is why
