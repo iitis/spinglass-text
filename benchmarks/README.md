@@ -145,7 +145,8 @@ threads), branch `lp/monorepo`, base commit `a07a54c` plus the update.
 | Dataset | Machine |
 |---|---|
 | `crossover_raw.csv`, `concurrency_raw.csv`, `alloc_raw.csv` (after-arms) | Xeon Platinum 8462Y+ + one NVIDIA H100 |
-| `sweep50_cpu.csv`, `div3.csv`, `div3_extra.csv`, `xtransform.csv` | RTX 5080 dev machine |
+| `sweep50_cpu.csv`, `div3.csv`, `div3_extra.csv` | Xeon Platinum 8462Y+ (H100 server), CPU |
+| `xtransform.csv` | RTX 5080 dev machine, CPU (not yet re-run; deterministic, so a re-run should reproduce it) |
 | `eps_stats.csv` | device-independent (verified CPU = GPU) |
 | `ladder_raw.csv` | Xeon Platinum 8462Y+ (H100 server), 5 interleaved rounds |
 
