@@ -5,9 +5,10 @@
 %% https://legacyfileshare.elsevier.com/promis_misc/softwarex-software-update-template.tex
 %% with the template's instruction header and \uline{} placeholders removed, as
 %% the template itself directs. Structure: title "Version [number] - [title of
-%% first publication]", "Refers to" with the DOI of the original publication,
-%% ~100-word abstract, up to six keywords, the C1-C8 code-metadata table, and
-%% the description of the update, followed by acknowledgements and references.
+%% first publication]", author front matter with a ~100-word abstract and up to
+%% six keywords, "Refers to" with the original DOI, the C1-C8 code-metadata
+%% table, and the description of the update, followed by end matter and
+%% references.
 
 \documentclass[preprint,12pt,a4paper]{elsarticle}
 
@@ -77,6 +78,8 @@ Ising model \sep reproducibility
 
 \end{frontmatter}
 
+%% The official SoftwareX update LaTeX template places "Refers to" after the
+%% abstract and keywords. This source retains that ordering.
 %% ---------------------------------------------------------------- refers to
 \section*{Refers to}
 

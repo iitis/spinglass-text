@@ -59,11 +59,12 @@ The manuscript is built directly on the official SoftwareX software-update LaTeX
 template (v6, March 2026,
 <https://legacyfileshare.elsevier.com/promis_misc/softwarex-software-update-template.tex>),
 with the template's instruction header and `\uline{}` placeholders removed as the
-template directs. It mandates: title of the form
-`Version [number] - [title of first publication]`; a "Refers to" citation with the
-original DOI; ~100-word abstract; ≤6 keywords; the C1–C8 metadata table; the
-description of the update. All are present, in that order, plus the template's
-`\linenumbers`.
+template directs. The official LaTeX template itself uses `elsarticle`. It orders
+the title and author front matter, ~100-word abstract, up to six keywords,
+"Refers to" citation with the original DOI, C1–C8 metadata table, and description
+of the update. The manuscript follows that order and enables the template's
+`\linenumbers`. The Word template places "Refers to" before the abstract, but that
+ordering does not apply to the journal's LaTeX template.
 
 The description section runs longer than the template's "up to two pages of text"
 allowance. Deliberate: reviewers tend to ask for extensions, and the journal-wide
