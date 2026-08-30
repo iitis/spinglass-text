@@ -16,7 +16,7 @@
 # numerically negligible weight (NEGLIGIBLE_DISCARD = 1e-12 in SpinGlassTensors). Thus
 # "0 bond-limited" means no change from raising D is expected at the reported
 # precision: at D=32 the four bond-capped cuts drop eps_i <= 5.5e-14 and do not count.
-# The stats are device-independent (CPU == GPU here).
+# The bundled CSV records the CPU calculation. Set DEVICE=gpu for a comparison.
 #
 # ENV: BONDS=csv of Ints (default "4,32")  SEED=Int  DEVICE=cpu|gpu
 #      OUT=path  PKG=SpinGlassPEPS.jl checkout

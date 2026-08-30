@@ -5,12 +5,14 @@ published version (v1.4.1, SoftwareX **31** (2025) 102257).
 
 ```
 softx/v_1/             SoftwareX submission version (official update template,
-                       v6, March 2026). Self-contained: manuscript.tex, refs.bib,
-                       figures/, run.sh
-arxiv/v_1/             arXiv version: identical except line numbering removed,
-                       which arXiv does not accept. run.sh builds the manuscript
-                       and assembles arxiv-submission.zip (tex + .bbl + figures
-                       + anc/benchmarks)
+                       v6, March 2026). Includes the main manuscript and the
+                       standalone SupplementMethods.tex wrapper. run.sh builds
+                       the two PDFs, benchmark-data archive and LaTeX-source
+                       archive
+arxiv/v_1/             arXiv version: line numbering removed and the same
+                       supplementary content included under \appendix. run.sh
+                       builds the manuscript and arxiv-submission.zip (tex +
+                       .bbl + supplementary source + figures + ancillary data)
 
 benchmarks/            runnable drivers + committed raw/summary results behind every
                        figure, table, and prose number (see benchmarks/README.md)
@@ -23,14 +25,24 @@ frozen, and the next revision starts by copying the previous one (`softx/v_1` �
 `softx/v_2`). Build either version with its own `run.sh`:
 
 ```sh
-cd softx/v_1 && ./run.sh      # journal submission PDF
-cd arxiv/v_1 && ./run.sh      # arXiv PDF + arxiv-submission.zip
+cd softx/v_1 && ./run.sh      # journal PDFs and upload archives
+cd arxiv/v_1 && ./run.sh      # arXiv PDF and arxiv-submission.zip
 ```
 
-Built PDFs and the zip are gitignored since `run.sh` regenerates them. The arXiv
-upload must include `manuscript.bbl` (arXiv does not run BibTeX) and carries
-`benchmarks/` as arXiv ancillary files, since the data-availability statement
-cites it as supplementary material.
+The SoftwareX build produces four upload items: `manuscript.pdf`,
+`SupplementMethods.pdf`, `BenchmarkData.zip` and `SourceFiles.zip`. The first
+two are the manuscript and the file captioned Supplementary Material 1. The
+benchmark archive is captioned Supplementary Data 1. Editorial Manager item
+types are journal-configured, so select the available supplemental type and a
+non-unpacking archive type for `BenchmarkData.zip`. Select `LaTeX source files`
+for `SourceFiles.zip` when that exact type is offered. Do not classify the source
+archive as supplementary material. Built PDFs and archives are gitignored
+because the run scripts regenerate them. The source archive is flat, as required
+by Elsevier's LaTeX instructions.
+
+The arXiv PDF contains the full supplement as Sections S1--S5 after the
+`\appendix` command. Its upload archive includes `supplementary-content.tex`,
+the required `manuscript.bbl`, and `benchmarks/` as ancillary files.
 
 Every benchmark is runnable from `benchmarks/` and its results are committed
 there as CSVs; `benchmarks/makefigs.py` regenerates the manuscript figures into
@@ -69,10 +81,12 @@ and a licence file, and a **GitHub** URL in C2 (other hosts are not accepted).
    auto-generated from GitHub contributors and includes raw usernames
    (`annamariadziubyna`, `zpuchala`); worth curating on Zenodo since that record
    is the citable archive.
-3. **Upload `benchmarks/` as supplementary material.** The data-availability
-   sentence now cites it as supplementary material accompanying the article, so it
-   has to be part of the submission package (readers of the published paper cannot
-   see the manuscript sources).
+3. **Select the benchmark archive item type before upload.** Editorial Manager
+   unpacks ZIP files by default. Use the journal's non-unpacking supplementary
+   archive type if it is available. Otherwise upload the data files individually
+   or deposit the archive in a data repository and cite its DOI. Upload
+   `SupplementMethods.pdf` separately, use the caption Supplementary Material 1,
+   and select the supplemental item type offered by the journal.
 
 *Done:* v2.0.0 is tagged, released, registered in the Julia General registry, and
 archived on Zenodo (`10.5281/zenodo.22134580`, pinned in `refs.bib`). C1 names a
@@ -87,9 +101,10 @@ paper); the official template port; the ~100-word abstract.
 
 ## Claims a reviewer may probe, and where they come from
 
-Every figure and table is reproducible from `benchmarks/`: both tables recompute
-bit-for-bit from the committed raw CSVs via the summarizers, and `makefigs.py`
-regenerates the figures byte-identically from the committed CSVs. The
+The main concurrency table and Supplementary Table S1 recompute from committed
+raw CSVs via the supplied summarizers. The other numerical supplementary tables
+are direct summaries of committed CSV records. `makefigs.py` regenerates the
+figures byte-identically from those records. The
 contraction-error examples and the β-ladder result quoted in prose have their own
 drivers (`eps_stats.jl`, `ladder.jl`, `profile.jl`) with committed results. What
 remains recorded-only (with protocol, in `benchmarks/README.md`) is what cannot be
@@ -99,14 +114,14 @@ caution. All of those measure the superseded code.
 
 - **The single-GPU concurrency result is device-dependent, and the manuscript says
   which device.** On the H100 the concurrent sweep pays (1.69×/1.44× at c=2/c=4,
-  Table 1); on a consumer GPU it never beat the serial loop (0.68–0.94×,
-  benchmarks/README.md “Recorded measurements”), which is why the package keeps `concurrency = :auto` at 1 on
-  GPU. Table 1's caption names the H100.
-- **The methodological caution is included on purpose.** An earlier version of our
-  own measurement reported a 1.68× speed-up that did not exist, caused by timing
-  the serial arm immediately after a concurrent warm-up. Reporting this protects
-  the paper's other performance numbers and is useful to anyone benchmarking this
-  solver.
+  Table 1). The package retains a conservative default of one solve on GPU. An
+  older consumer-GPU result is kept only as an explicitly unarchived historical
+  observation in `benchmarks/README.md`, not as quantitative evidence in the
+  manuscript.
+- **The timing artifact is documented in the supplement.** An earlier measurement
+  reported a spurious 1.68× speed-up after the serial arm ran immediately after a
+  concurrent warm-up. The supplementary protocol notes explain the interleaving
+  and memory-pool reclamation used for all reported ratios.
 
 ## Not covered by this manuscript
 

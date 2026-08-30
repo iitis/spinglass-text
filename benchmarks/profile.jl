@@ -14,10 +14,10 @@
 #   These are interval unions, not sums, so concurrent activity is not
 #   double-counted. batching_cap = wall / (wall - host_api_s) is the ceiling on
 #   what removing ALL CUDA API time could buy.
-# Phase 2 (host-side, device-independent): Profile.Allocs at 2% sampling over the
-#   same solve; reports the share of sampled allocated bytes attributable to the
-#   hottest single line. Allocated bytes do not depend on the host or device model,
-#   the same argument the allocation figure rests on.
+# Phase 2 (host-side allocation profiling): Profile.Allocs at 2% sampling over
+#   the same solve reports the share of sampled allocated bytes attributable to
+#   the hottest single line. Compare allocation totals only across matched code,
+#   runtime and solver configurations.
 #
 # ENV: SPINS=128|2048  BOND=Int  SPARSITY=dense|sparse  DEVICE=cpu|gpu
 #      SEED=Int  RATE=Float (Allocs sample rate)  OUT=path  PKG=checkout

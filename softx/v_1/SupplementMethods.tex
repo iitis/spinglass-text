@@ -1,0 +1,54 @@
+%% Reader-facing supplementary file for the SoftwareX submission.
+\documentclass[preprint,12pt,a4paper]{elsarticle}
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{array}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+
+\emergencystretch=3em
+\journal{SoftwareX}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Supplementary Material 1: Benchmark protocols, additional results,
+provenance and validation for Version 2.0.0 - SpinGlassPEPS.jl}
+
+\author[iitis]{\L{}ukasz Pawela\corref{cor1}}
+\ead{lpawela@iitis.pl}
+\author[iitis]{Bart\l{}omiej Gardas}
+\cortext[cor1]{Corresponding author}
+
+\address[iitis]{Institute of Theoretical and Applied Informatics, Polish Academy
+of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
+
+\begin{abstract}
+This document provides the additional measurements, protocols, provenance and
+regression-test details cited by the SpinGlassPEPS.jl v2.0.0 software-update
+article. The accompanying Supplementary Data 1 archive contains the runnable
+drivers, raw and summarized CSV files, plotting scripts and generated figures.
+\end{abstract}
+
+\end{frontmatter}
+
+\setcounter{section}{0}
+\setcounter{table}{0}
+\setcounter{equation}{0}
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\theequation}{S\arabic{equation}}
+\newcommand{\suppdatadir}{\path{benchmarks/}}
+\newcommand{\suppfile}[1]{\path{benchmarks/#1}}
+
+\input{supplementary-content}
+\FloatBarrier
+
+\end{document}

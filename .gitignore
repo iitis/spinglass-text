@@ -24,6 +24,9 @@ chagptreview.md
 # folder's run.sh). figures/ and benchmarks/ PDFs stay tracked.
 manuscript.pdf
 manuscript.synctex.gz
+SupplementMethods.pdf
 
-# Regenerable arXiv upload package (arxiv/v_1/run.sh builds it)
+# Regenerable submission packages built by the version run scripts
 arxiv-submission.zip
+BenchmarkData.zip
+SourceFiles.zip

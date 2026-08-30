@@ -97,7 +97,7 @@ OUT="$HERE/xtransform.csv" NINST=5 CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/xtrans
 
 # ---------------------------------------------------------------------------
 # 2b) Prose numbers: contraction-error diagnostics and the beta-ladder warm
-#     start. eps_stats is deterministic and device-independent; the ladder rows
+#     start. eps_stats is a deterministic CPU calculation; the ladder rows
 #     are timings and record the machine in the CSV header comment -- across
 #     machines quote the ratios, not the absolute times.
 # ---------------------------------------------------------------------------
