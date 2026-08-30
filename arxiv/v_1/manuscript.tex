@@ -139,7 +139,7 @@ reported no measure of truncation loss during its heuristic contraction, leaving
 users without an internal diagnostic when an exact reference solution was
 unavailable. The original benchmark instead certified ground states with CPLEX.
 Algorithms and an extensive benchmark campaign are described
-separately~\cite{dziubyna2024limitations}. Version 2.0.0 is archived on
+separately~\cite{dziubyna2025limitations}. Version 2.0.0 is archived on
 Zenodo~\cite{spinglasspeps_zenodo}.
 
 All the packages are consolidated into one. The four implementation packages
@@ -214,6 +214,16 @@ paired cold/warm time ratios of $1.32$ and $1.34$ over five interleaved rounds).
 Because the first rung is cold in both protocols, the reduction over the full
 ladder was about 16\%. The benefit is limited by the share of the solve spent
 building boundary MPS and is smaller where the search dominates.
+
+For a cold ladder, a completed rung is marked trusted when its accumulated
+discarded weight satisfies $\sum_i\varepsilon_i \leq \texttt{max\_discarded}$.
+The routine selects the minimum-energy trusted rung. If no trusted rung has a
+valid energy, it returns the minimum-energy successful rung as a fallback and
+leaves it flagged as untrusted. The threshold is therefore a preference filter,
+not a hard acceptance criterion. Setting \texttt{stop\_when\_untrusted=true}
+terminates the ladder after the first successfully completed rung above the
+threshold. This option bounds cost but can miss a later acceptable or
+lower-energy rung because discarded weight is not monotone in $\beta$.
 
 The discarded-weight diagnostic has two limitations. First, it does not capture
 the approximation introduced by a warm start. A warm start optimizes
@@ -405,12 +415,40 @@ rather than a selection criterion.
 \input{supplementary-content}
 \FloatBarrier
 
+\section*{CRediT authorship contribution statement}
+
+\noindent\textbf{{\L}ukasz Pawela:} Conceptualization, Formal analysis, Funding
+acquisition, Investigation, Methodology, Project administration, Resources,
+Software, Supervision, Validation, Writing -- original draft, Writing -- review
+\& editing.
+
+\noindent\textbf{Bart\l{}omiej Gardas:} Conceptualization, Formal analysis,
+Funding acquisition, Investigation, Methodology, Project administration,
+Resources, Software, Supervision, Writing -- original draft, Writing -- review
+\& editing.
+
+\section*{Declaration of competing interest}
+
+The authors report financial support from the National Science Centre, Poland,
+as stated in the Acknowledgements. They declare no other known competing
+financial interests or personal relationships that could have appeared to
+influence the work reported in this paper.
+
+\section*{Data availability}
+
+The version 2.0.0 source code and benchmark instances are archived on
+Zenodo~\cite{spinglasspeps_zenodo}. The available benchmark records, drivers and
+plotting scripts supporting the reported results are included in the arXiv
+ancillary files under \path{anc/benchmarks/}. Raw logs for the historical
+pre-change allocation measurements were not retained. The corresponding summary
+values and protocol context are included.
+
 \section*{Acknowledgements}
 \label{acknowledgements}
 
-This work was supported by the National Science Center (NCN), Poland, via
-project Sonata Bis 10, No.~2020/38/E/ST3/00269 (B.G.), and Sonata Bis 15,
-No.~2025/58/E/ST6/00422 ({\L}.P.).
+This work was supported by the National Science Centre (NCN), Poland, through
+SONATA BIS 10, grant no.~2020/38/E/ST3/00269 (B.G.), and SONATA BIS 15, grant
+no.~2025/58/E/ST6/00422 ({\L}.P.).
 
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}

@@ -74,14 +74,11 @@ and a licence file, and a **GitHub** URL in C2 (other hosts are not accepted).
 
 ## Remaining pre-submission actions
 
-1. **Repo README badge.** It shows `10.5281/zenodo.3245496` while linking
-   `10.5281/zenodo.14627393`; point both at the concept DOI
-   `10.5281/zenodo.14627392` (or the v2.0.0 record `10.5281/zenodo.22134580`).
-2. **Zenodo deposit authorship (optional).** The v2.0.0 record's creator list is
+1. **Zenodo deposit authorship (optional).** The v2.0.0 record's creator list is
    auto-generated from GitHub contributors and includes raw usernames
    (`annamariadziubyna`, `zpuchala`); worth curating on Zenodo since that record
    is the citable archive.
-3. **Select the benchmark archive item type before upload.** Editorial Manager
+2. **Select the benchmark archive item type before upload.** Editorial Manager
    unpacks ZIP files by default. Use the journal's non-unpacking supplementary
    archive type if it is available. Otherwise upload the data files individually
    or deposit the archive in a data repository and cite its DOI. Upload
@@ -91,7 +88,9 @@ and a licence file, and a **GitHub** URL in C2 (other hosts are not accepted).
 *Done:* v2.0.0 is tagged, released, registered in the Julia General registry, and
 archived on Zenodo (`10.5281/zenodo.22134580`, pinned in `refs.bib`). C1 names a
 real release, C2 points at `/tree/v2.0.0`, and C7 at the deployed `/v2.0.0/` docs
-(`DOCUMENTER_NEWEST = v2.0.0`; `/stable/` now serves the same build).
+(`DOCUMENTER_NEWEST = v2.0.0`; `/stable/` now serves the same build). The package
+README badge now displays and links to the concept DOI
+`10.5281/zenodo.14627392`.
 
 *Settled:* authorship (Łukasz Pawela and Bartłomiej Gardas, i.e. the authors of
 the update; the other names on the 2025 article authored the original package);
