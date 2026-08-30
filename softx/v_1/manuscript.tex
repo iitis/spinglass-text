@@ -24,6 +24,7 @@
 
 \usepackage{array}
 \usepackage{float}
+\usepackage{placeins}
 \restylefloat{table}
 
 %% Long unbreakable \texttt package names: give TeX slack instead of overfull lines.
@@ -55,16 +56,16 @@ of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
 \begin{abstract}
 This update consolidates \texttt{SpinGlassPEPS.jl}'s four separately registered
 packages into one installable package with a curated public API. Truncating
-factorizations now report their relative discarded weight, providing an oracle-free
-diagnostic of truncation loss for cold-started contractions. An
+factorizations now report their relative discarded weight, providing an
+oracle-free diagnostic of truncation loss for cold-started contractions. An
 inverse-temperature ladder supplements scalar $\beta$ and, where compatible,
-initializes later rungs from retained boundary matrix product states. On a tested
-2048-spin instance this reduced warmed-rung wall time by ${\approx}24$--$25\%$
-($\approx16\%$ over the whole ladder). Profiling shows the solver is host-bound.
-Moving contraction temporaries off the collected heap cuts a 2048-spin bond-32
-solve's allocated memory by about two-thirds (90.9 to 32~GiB on CPU). On an H100
-the device overtakes the host only in the largest sparse case measured, later
-than the original article implies.
+initializes later rungs from retained boundary matrix product states. On a
+tested 2048-spin instance this reduced warmed-rung wall time by
+${\approx}24$--$25\%$ ($\approx16\%$ over the whole ladder). Profiling shows the
+solver is host-bound. Moving contraction temporaries off the collected heap cuts
+a 2048-spin bond-32 solve's allocated memory by about two-thirds (90.9 to 32~GiB
+on CPU). On the tested H100, GPU wall time was shorter only for the largest
+sparse case measured.
 \end{abstract}
 
 \begin{keyword}
@@ -102,13 +103,13 @@ C3 & Legal Code License & Apache License 2.0 \\
 \hline
 C4 & Code versioning system used & git \\
 \hline
-C5 & Software code languages, tools, and services used & Julia; CUDA and
-cuTENSOR (GPU execution path) \\
+C5 & Software code languages, tools, and services used & Julia. CUDA and
+cuTENSOR provide optional GPU execution \\
 \hline
 C6 & Compilation requirements, operating environments \& dependencies & Julia
-$\geq$ 1.11; CUDA.jl 5, cuTENSOR 2, TensorOperations.jl 5, LowRankApprox.jl,
-Graphs.jl, MetaGraphs.jl. A CUDA-capable GPU is optional; the CPU path is
-exercised by continuous integration. HDF5 is an optional package extension \\
+$\geq$ 1.11. Dependencies include CUDA.jl 5, cuTENSOR 2, TensorOperations.jl 5,
+LowRankApprox.jl, Graphs.jl and MetaGraphs.jl. A CUDA-capable GPU is optional.
+Continuous integration exercises the CPU path. HDF5 is an optional extension \\
 \hline
 C7 & If available Link to developer documentation/manual &
 \url{https://euro-hpc-pl.github.io/SpinGlassPEPS.jl/v2.0.0/} \\
@@ -134,7 +135,7 @@ reported no measure of truncation loss during its heuristic contraction, leaving
 users without an internal diagnostic when an exact reference solution was
 unavailable. The original benchmark instead certified ground states with CPLEX.
 Algorithms and an extensive benchmark campaign are described
-separately~\cite{dziubyna2024limitations}. This current version is archived on
+separately~\cite{dziubyna2024limitations}. Version 2.0.0 is archived on
 Zenodo~\cite{spinglasspeps_zenodo}.
 
 All the packages are consolidated into one. The four implementation packages
@@ -147,22 +148,25 @@ re-exported some 240. All the lower-level kernels remain reachable through the
 submodules.
 
 The clustered Hamiltonian is now a concrete \texttt{PottsHamiltonian} type with
-typed fields read through accessors, rather than a \texttt{MetaGraphs} property bag
-consulted dynamically inside the search loop. The process-global memoization that
-cached boundary matrix product states (MPS), MPO layers and environments has been
-replaced by a contraction cache owned by each contractor, with explicit per-row
-eviction. The old design was thread-unsafe by construction and had to be cleared by
-manual calls scattered through the search. Concurrent solving was therefore not
-available before this change.
+typed fields read through accessors, rather than a \texttt{MetaGraphs} property
+bag consulted dynamically inside the search loop. The process-global memoization
+that cached boundary matrix product states (MPS), MPO layers and environments
+has been replaced by a contraction cache owned by each contractor, with explicit
+per-row eviction. The global cache was not thread-safe and required manual
+clearing. The contractor-owned cache enables concurrent solves.
 
-The update also repairs defects that silently affected results.
-\texttt{corner\_matrix} threw for every \texttt{SiteTensor} input and returned
-permuted trailing dimensions for \texttt{VirtualTensor}, and the exhaustive GPU
-search launched too few blocks,
-truncating the reported spectrum for problems larger than about nine spins. The
-benchmark instances at the size used by the original article's figures are now
-shipped with the package, since the published listing resolved them from a directory
-that did not contain them.
+\subsection{Correctness fixes and validation}
+
+The update corrects two result-affecting defects. \texttt{corner\_matrix} failed
+for every \texttt{SiteTensor} input and permuted the trailing dimensions of
+\texttt{VirtualTensor} outputs. Independent dense-reference tests now cover both
+implementations on CPU and GPU. The exhaustive GPU search also launched too few
+blocks and returned incomplete spectra for problems with at least ten spins. A
+deterministic ten-spin regression test compares all 1024 GPU state codes and
+energies with complete CPU enumeration across two 512-thread blocks.
+
+The package now includes the benchmark instances used by the original article's
+figures. The published listing referenced a directory that was not distributed.
 
 \subsection{Discarded-weight diagnostics and parameter selection}
 
@@ -191,15 +195,16 @@ consistency check. A spread that is a sizeable fraction of the energy scale
 shows that the result depends on the contraction order, which may reflect
 contraction or search error.
 
-The inverse temperature $\beta$ is the most consequential parameter and was also
-the hardest to choose. If it is too small, the conditional probabilities the
-search branches on say little about the ground state. The original interface
-nonetheless took a scalar whose optimum its own documentation described as
-instance-dependent. The update therefore adds \texttt{beta\_ladder}, which walks
-an increasing schedule in which each rung reuses the previous rung's boundary
-MPS to start variational compression, instead of forming $W\psi$ exactly and
-truncating it. On the tested 2048-spin instance, where boundary-MPS construction
-dominates, warm starting reduced the two warmed rungs' wall times by about 24\%
+The inverse temperature $\beta$ strongly affects solution quality. If it is too
+small, the conditional probabilities used for branching contain little
+information about the ground state. The original interface accepted a scalar
+$\beta$, although its documentation described the best value as
+instance-dependent. The update adds \texttt{beta\_ladder}, which evaluates an
+increasing schedule. When settings are compatible, each later rung initializes
+variational compression from the previous rung's boundary MPS instead of forming
+$W\psi$ exactly and truncating it. On the tested 2048-spin instance, where
+boundary-MPS construction dominates, warm starting reduced the two warmed rungs'
+wall times by about 24\%
 and 25\% relative to independent cold builds, with identical energies (median
 paired cold/warm time ratios of $1.32$ and $1.34$ over five interleaved rounds).
 Because the first rung is cold in both protocols, the reduction over the full
@@ -207,7 +212,7 @@ ladder was about 16\%. The benefit is limited by the share of the solve spent
 building boundary MPS and is smaller where the search dominates.
 
 The discarded-weight diagnostic has two limitations. First, it does not capture
-the approximation introduced by a warm start: a warm start optimizes
+the approximation introduced by a warm start. A warm start optimizes
 \emph{within} a fixed bond dimension without a truncating factorization and can
 therefore report $\sum\varepsilon\approx0$ regardless of its variational gap.
 Consequently, $\sum\varepsilon$ is not a complete error diagnostic for a
@@ -216,86 +221,70 @@ with a warm start. Second, $\sum\varepsilon$ does not rank solution quality. In
 Figure~\ref{fig:evr}(c) the energy error falls monotonically with $\beta$,
 reaching the best energy found in 9 of 10 instances at $\beta=6$, while
 $\sum\varepsilon$ peaks at $\beta=4$ and then falls, because a sharply peaked
-Boltzmann distribution carries less entanglement and truncates more easily.
-$\beta=2$ carries almost the lowest $\sum\varepsilon$ of any setting measured
-yet gives the worst energy, while $\beta=4$ carries the highest and does better.
+Boltzmann distribution carries less entanglement and truncates more easily. At
+$\beta=2$, $\sum\varepsilon$ was near its minimum but the energy error was
+largest. At $\beta=4$, $\sum\varepsilon$ was largest and the energy error was
+smaller.
 
-Figure~\ref{fig:evr}(d) shows that search breadth does not buy diversity. At
-$M=1024$, forty-nine of the fifty runs returned a single valley, with states
-differing from the best by tens of spins in most runs and never by more than
-$399$ out of $2500$, where a diversity count would demand $625$. The one
-exception ($\beta{=}8$, instance~1) is a degraded contraction, see
-Figure~\ref{fig:evr} and its caption. The metric of the original article scores
-the exact global spin flip as two solutions, and the mirror sits at distance $N$
-for free (Figure~\ref{fig:evr} and its caption). Changing the contraction order
-does move the solver between valleys. One state from each of the eight
-transformations gives two or three mutually distant solutions on four of five
-instances, with pairwise distances reaching $1249$ of a possible $1250$. This
-argues for sweeping the transformations on grounds independent of energy. It
-holds even where the transformations agree on the energy to several digits.
+Increasing search breadth did not increase diversity under the tested protocol.
+At $M=1024$, 49 of 50 runs remained within one valley under the $N/4$ criterion
+after quotienting the exact global spin-flip symmetry (Figure~\ref{fig:evr}(d)).
+In contrast, taking one result from each of the eight lattice transformations
+produced two or three distinct valleys on four of five instances. Pairwise
+quotient distances reached 1249 of 1250. For these five instances,
+transformation sweeps increased diversity even when the reported energies agreed
+to several digits. The supplementary material reports the full distance
+distributions, per-instance results and the exceptional $\beta=8$ run.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/quality.pdf}
 \caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension
-8, on CPU. (a) Time to solution against relative energy error as the search
-breadth $M=$~\texttt{max\_states} varies over $16$--$1024$. Points are
-individual instances, the line their median. (b) The same runs per instance. (c)
-Median energy error and median discarded weight $\sum_i\varepsilon_i$ against
-$\beta$, annotations count the instances that reached the best energy found.
-$E_{\mathrm{best}}$ is the lowest energy over all settings shown, not a
-certified optimum, so zero error means best found rather than optimal. (d)
-Spread of the returned solutions at $M=1024$. These instances carry no local
-fields, so $E(\sigma)=E(-\sigma)$ and every state has a degenerate mirror at
-Hamming distance $N$; distances are therefore quotient distances $\min(d,N-d)$
-on a space of diameter $N/2$. Band and line give medians over the ten instances
-of the $50$th, $90$th and $100$th percentile of the distance from each returned
-state to the best one, all a factor of eight to sixty below the $N/4$ threshold.
-The single point above that threshold ($\beta=8$, instance 1) is a degraded
-contraction rather than a second optimum: its energy is $8$ above that
-instance's best and it does not return even the exact mirror. Square markers
-repeat the measurement across contraction orders, taking one state from each of
-the eight lattice transformations at $\beta=4$ and reporting the median over
-five instances of the pairwise minimum, median and maximum.}
+8 on CPU. (a) Time to solution versus relative energy error as
+$M=$~\texttt{max\_states} varies from 16 to 1024. Points show individual
+instances. The line shows their median. (b) The same measurements indexed by
+instance. (c) Median energy error and aggregate discarded weight
+$\sum_i\varepsilon_i$ versus $\beta$. Labels count instances that reached the
+best energy found. $E_{\mathrm{best}}$ is the lowest energy over all settings
+shown, not a certified optimum. (d) Solution spread at $M=1024$, measured by
+quotient distance $\min(d,N-d)$ to identify exact global spin-flip pairs. The
+band and line show medians over ten instances of the 50th, 90th and 100th
+percentiles of distance from each returned state to the best state. Squares
+summarize pairwise minimum, median and maximum distances among eight
+transformation results at $\beta=4$ over five instances. The supplementary
+material provides definitions, per-instance data and analysis of the $\beta=8$
+outlier.}
 \label{fig:evr}
 \end{figure}
+\FloatBarrier
 
 \subsection{Transformation sweeps and hardware performance}
 
-The standard protocol solves each instance once per lattice transformation, a
-loop that previously lived in user code. \texttt{sweep\_transformations} now
-owns that loop and seeds each transformation deterministically, since the
-\texttt{Zipper} strategy draws a random sketch and results would otherwise
-depend on task scheduling. It also isolates failures and reports the diagnostics
-described above. Device memory sets the limit on fanning out. It depends on the
-instance, not on the machine, so concurrency is gated by a byte budget. A
-calibration solve measures peak usage, and each admitted solve carries its
-reservation as a task-scoped value, so kernel batches are sized against
-\emph{its} slice rather than against the shared pool. Without that last step the
-reservation would be advisory only: every concurrent solve would measure the
-same free pool and batch as though it owned all of it.
+The standard protocol applies each lattice transformation once per instance.
+Previously, users implemented this loop. \texttt{sweep\_transformations} now
+seeds each transformation deterministically because \texttt{Zipper} draws a
+random sketch and task scheduling can otherwise affect results. It also isolates
+failures and reports the diagnostics described above. Available device memory
+limits concurrency. A calibration solve measures peak memory, and admission is
+controlled by a byte budget. Each admitted solve receives a task-local
+reservation used to size its kernel batches. Concurrent solves therefore cannot
+each size batches against the full shared memory pool.
 
-Concurrency pays on both devices in Table~\ref{tab:sweep}. On CPU the sweep
-scales monotonically, reaching $3.1\times$ and $1.6\times$ at eight-way on the
-two cases. On a single GPU it helps as well, up to $1.7\times$ at two-way and
-$1.4\times$ at four-way. A single admitted solve ($c{=}1$) is a slight net loss:
-the sweep's fixed set-up cost is not amortized when nothing overlaps. Energies
-agree across every admitted solve.
+Concurrent execution reduced sweep time on both CPU and GPU
+(Table~\ref{tab:sweep}). CPU speed-up increased monotonically to $3.1\times$ and
+$1.6\times$ at $c=8$ for the two cases. GPU speed-up reached $1.7\times$ at
+$c=2$ and $1.4\times$ at $c=4$. At $c=1$, fixed sweep setup increased wall time
+because no solves overlapped. Energies agreed for every configuration. All
+ratios use the paired, interleaved protocol summarized in the table caption and
+documented in the supplementary reproducibility notes.
 
-One point of method cost us a wrong result. Timing the serial arm immediately
-after a concurrent warm-up leaves the CUDA memory pool in a state that inflated
-our serial baseline by up to $2.7\times$, which is enough to distort any
-speed-up ratio measured against it. We therefore interleave the two arms and
-reclaim fully before each timed section. Any timing of this solver needs the
-same care.
-
-\begin{table}[t]
+\begin{table}[!htbp]
 \small
 \centering
 \caption{Speed-up of the concurrent sweep over the serial eight-transformation loop.
 Each entry is the median of per-round paired ratios, measured with interleaved arms
 and a full reclaim before every timed section. Intel Xeon Platinum 8462Y+ (CPU, 5
-rounds) and one NVIDIA H100 (GPU, 7 rounds).}
+rounds) and one NVIDIA H100 (GPU, 7 rounds). n.m. indicates not measured.}
 \label{tab:sweep}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
@@ -303,94 +292,72 @@ Case & Device & $c{=}1$ & $c{=}2$ & $c{=}4$ & $c{=}8$ \\
 \midrule
 Chimera $3\!\times\!4\!\times\!3$, $D{=}16$ & CPU & 0.88 & 1.41 & 2.14 & \textbf{3.09} \\
 Chimera 128-spin, $D{=}32$, \texttt{Zipper} & CPU & 0.89 & 1.11 & 1.31 & \textbf{1.64} \\
-Chimera $3\!\times\!4\!\times\!3$, $D{=}16$ & GPU & 0.91 & \textbf{1.69} & 1.44 & --- \\
-Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.83 & 1.22 & \textbf{1.43} & --- \\
+Chimera $3\!\times\!4\!\times\!3$, $D{=}16$ & GPU & 0.91 & \textbf{1.69} & 1.44 & n.m. \\
+Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.83 & 1.22 & \textbf{1.43} & n.m. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The original article recommends the GPU for its larger examples without
-qualification. Solving identical configurations on each device
-(Figure~\ref{fig:cross}, Table~\ref{tab:cross}) shows that this holds only for
-the largest configurations we measured. The host is ${\approx}45\times$ faster
-at 36 spins and, at 2048 spins and bond 16, still ${\approx}1.6\times$ faster in
-the dense case and ${\approx}1.3\times$ faster in the sparse one. The device
-overtakes it only in the largest sparse case, 2048 spins at bond 32, where the
-GPU is ${\approx}1.4\times$ faster. The dense case at that size still favours
-the host by ${\approx}10\%$, and energies agree in every cell. On the tested
-Xeon/H100 system the CPU is therefore preferable for exploratory work in the
-smaller or dense configurations, and the device is worth using in the
-D-Wave-scale sparse regime at large bond dimensions.
+The original article recommends GPU execution for larger examples. On the tested
+Xeon/H100 system, matched CPU and GPU configurations gave shorter GPU wall time
+in only one measured cell (Figure~\ref{fig:cross}). CPU wall time was about
+$45\times$ shorter at 36 spins.
+At 2048 spins and $D=16$, it was about $1.6\times$ shorter for the dense instance
+and $1.3\times$ shorter for the sparse instance. GPU wall time was about
+$1.4\times$ shorter only for the 2048-spin sparse instance at $D=32$. For the
+dense instance at that size, CPU wall time remained about 10\% shorter. Energies
+agreed in every measured cell. Supplementary Table~S1 reports all ratios and
+protocol details.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.62\linewidth]{figures/crossover.pdf}
-\caption{CPU/GPU wall-clock ratio on identical configurations, so values below
-one mean the host is faster. The device wins only once both the instance and the
-bond dimension are large. Data as in Table~\ref{tab:cross}.}
+\caption{CPU/GPU wall-clock ratio on identical configurations. Ratios below one
+indicate shorter CPU wall time. A ratio above one occurred only for the
+2048-spin sparse instance at $D=32$. Measurements used \texttt{Zipper},
+\texttt{SquareSingleNode}, $\beta=3$ and \texttt{max\_states}${=}128$ on an
+Intel Xeon Platinum 8462Y+ and one NVIDIA H100. Supplementary Table~S1 reports
+the complete values.}
 \label{fig:cross}
 \end{figure}
-
-\begin{table}[t]
-\small
-\centering
-\caption{Data behind Figure~\ref{fig:cross}: host versus device on identical
-configurations, as CPU/GPU wall-clock ratio (below 1 means the CPU is faster). `Zipper', `SquareSingleNode',
-$\beta{=}3$, \texttt{max\_states}${=}128$ throughout. Measured in separate
-alternating processes on the H100 server (Intel Xeon Platinum 8462Y+, one NVIDIA
-H100).}
-\label{tab:cross}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Spins & $D{=}8$ & $D{=}16$ & $D{=}32$ & $D{=}64$ \\
-\midrule
-36 (dense)     & 0.02 & 0.02 & 0.02 & 0.02 \\
-128 (dense)    & 0.14 & 0.21 & 0.36 & 0.46 \\
-128 (sparse)   & ---  & ---  & ---  & 0.68 \\
-2048 (dense)   & 0.50 & 0.64 & 0.90 & --- \\
-2048 (sparse)  & ---  & 0.78 & \textbf{1.45} & --- \\
-\bottomrule
-\end{tabular}
-\end{table}
+\FloatBarrier
 
 \subsection{Profiling and allocation}
 
-On a profiled 128-spin solve the host was the bottleneck, not the device.
-Host-side CUDA API calls account for only about a quarter of wall time, and most
-of the rest is host-side Julia work. Being host-bound keeps the CPU competitive
-across the measured crossover, and accelerating the tensor work removes none of
-the host-side bookkeeping.
+On a profiled 128-spin solve, host-side CUDA API calls accounted for 27.0\% of
+wall time and other Julia work accounted for 66.5\%. This host workload explains
+the measured CPU/GPU crossover. Faster tensor kernels do not reduce host-side
+bookkeeping.
 
-With the device mostly idle, kernel-level batching is the obvious next step. We
-did not pursue it, because eliminating the entire CUDA API share would cap the
-gain at ${\approx}1.4\times$, whereas the host allocation load was reachable
-directly. In the code as published, one line, \texttt{branch\_states} in the
-branch-and-bound search, accounted for 52.7\% of the bytes a 128-spin solve
-allocated, and two changes follow from that (Figure~\ref{fig:alloc}). The
-branched-configuration set is now backed by a single matrix rather than tens of
-thousands of small vectors per call, cutting the number of live objects sharply.
-Its allocated \emph{bytes} fall only ${\approx}4\%$ on the large solve's device
-arm and ${\approx}1\%$ on its host arm, but the object count that drives
-collection falls far more. Separately, the multi-tensor contraction temporaries
-were moved off the collected heap onto explicit allocation, cutting a 2048-spin
-bond-32 solve's allocated bytes by about two thirds (90.9 to 32~GiB on CPU).
-Both reductions were measured in a full solve, since the explicit allocator is
-no faster in isolation and pays only through the allocations it removes from the
-collected heap.
+Kernel-level batching could reduce device idle time. We did not implement it
+because eliminating the entire CUDA API share would limit the speed-up to about
+$1.4\times$. Host allocation could be reduced directly. In the published code,
+\texttt{branch\_states} accounted for 52.7\% of the bytes allocated by a
+128-spin solve. This motivated two changes (Figure~\ref{fig:alloc}). First, a
+single matrix now stores branched configurations instead of tens of thousands of
+small vectors per call. Allocated bytes fell by about 4\% in the large GPU run
+and 1\% in the corresponding CPU run. The main effect is a lower live-object
+count. Second, multi-tensor contraction temporaries moved from the collected
+heap to explicit allocation. This reduced allocated bytes for a 2048-spin,
+bond-32 CPU solve by about two thirds, from 90.9 to 32~GiB. Both changes were
+measured in a full solve. The explicit allocator was not faster in isolation.
+Its benefit comes from removing allocations from the collected heap.
 
-\begin{figure}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{figures/allocation.pdf}
 \caption{Allocated memory before and after the two allocation changes, on a
 2048-spin bond-32 solve, with percentages giving the reduction. ``states'' is
 the matrix-backed branched configuration set and ``temp.'' the off-heap
-contraction temporaries. The temporaries change removes about two-thirds of the
-CPU heap. The states change is small in \emph{bytes} because its benefit is a
-reduced live-object count, not a reduced volume. The post-change allocation
-totals were reproduced on both tested systems, and the H100 run gives 32.3~GiB
-on CPU and 24.1~GiB on GPU.}
+contraction temporaries. Moving the temporaries reduced CPU heap allocation by
+about two thirds. The states change has a small effect on allocated
+\emph{bytes} because
+it primarily reduces the live-object count. The post-change totals were
+reproduced on both tested systems. The H100 run allocated 32.3~GiB on CPU and
+24.1~GiB on GPU.}
 \label{fig:alloc}
 \end{figure}
+\FloatBarrier
 
 \subsection{Impact, limitations and outlook}
 
@@ -407,13 +374,12 @@ recorded measurements of the superseded code.
 
 Warm starting currently covers only the bottom boundary MPS, so layouts that
 build the top boundary do not benefit on those rows. $\sum\varepsilon$ did not
-select $\beta$ in our tests; hence the package documents it as a diagnostic
-rather than a criterion.
+select $\beta$ in our tests. The package therefore documents it as a diagnostic
+rather than a selection criterion.
 
 
-%% Flush pending floats so every figure precedes the reference list; without
-%% this the [t] figures spill past the bibliography.
-\clearpage
+%% Keep pending floats before the reference list without forcing a page break.
+\FloatBarrier
 
 \section*{Acknowledgements}
 \label{acknowledgements}
