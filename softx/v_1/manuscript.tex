@@ -16,16 +16,18 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\graphicspath{{figures/}{./}}
 \usepackage{url}
 %% The lineno packages adds line numbers.
 \usepackage{lineno}
-%% the hyperref package is used to introduce urls (useful for the metadata table)
-\usepackage{hyperref}
 
 \usepackage{array}
 \usepackage{float}
 \usepackage{placeins}
 \restylefloat{table}
+%% Load hyperref last so its float anchors are not overwritten.
+\usepackage{hyperref}
+\hypersetup{hidelinks}
 
 %% Long unbreakable \texttt package names: give TeX slack instead of overfull lines.
 \emergencystretch=3em
@@ -232,13 +234,15 @@ after quotienting the exact global spin-flip symmetry (Figure~\ref{fig:evr}(d)).
 In contrast, taking one result from each of the eight lattice transformations
 produced two or three distinct valleys on four of five instances. Pairwise
 quotient distances reached 1249 of 1250. For these five instances,
-transformation sweeps increased diversity even when the reported energies agreed
-to several digits. The supplementary material reports the full distance
-distributions, per-instance results and the exceptional $\beta=8$ run.
+transformation sweeps increased diversity while the relative energy spread
+across transformations remained between $2.21\times10^{-4}$ and
+$5.74\times10^{-4}$. Supplementary Material 1, Section S2, reports the per-run
+distance quantiles, per-instance transformation results and the exceptional
+$\beta=8$ run.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\linewidth]{figures/quality.pdf}
+\includegraphics[width=\linewidth]{quality.pdf}
 \caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension
 8 on CPU. (a) Time to solution versus relative energy error as
 $M=$~\texttt{max\_states} varies from 16 to 1024. Points show individual
@@ -251,9 +255,9 @@ quotient distance $\min(d,N-d)$ to identify exact global spin-flip pairs. The
 band and line show medians over ten instances of the 50th, 90th and 100th
 percentiles of distance from each returned state to the best state. Squares
 summarize pairwise minimum, median and maximum distances among eight
-transformation results at $\beta=4$ over five instances. The supplementary
-material provides definitions, per-instance data and analysis of the $\beta=8$
-outlier.}
+transformation results at $\beta=4$ over five instances. Supplementary
+Material 1, Section S2, provides definitions, per-instance data and analysis of
+the $\beta=8$ outlier.}
 \label{fig:evr}
 \end{figure}
 \FloatBarrier
@@ -276,7 +280,7 @@ $1.6\times$ at $c=8$ for the two cases. GPU speed-up reached $1.7\times$ at
 $c=2$ and $1.4\times$ at $c=4$. At $c=1$, fixed sweep setup increased wall time
 because no solves overlapped. Energies agreed for every configuration. All
 ratios use the paired, interleaved protocol summarized in the table caption and
-documented in the supplementary reproducibility notes.
+documented in Supplementary Material 1, Section S3.
 
 \begin{table}[!htbp]
 \small
@@ -306,55 +310,55 @@ At 2048 spins and $D=16$, it was about $1.6\times$ shorter for the dense instanc
 and $1.3\times$ shorter for the sparse instance. GPU wall time was about
 $1.4\times$ shorter only for the 2048-spin sparse instance at $D=32$. For the
 dense instance at that size, CPU wall time remained about 10\% shorter. Energies
-agreed in every measured cell. Supplementary Table~S1 reports all ratios and
-protocol details.
+agreed in every measured cell. Supplementary Material 1, Table S1, reports all
+ratios and protocol details.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.62\linewidth]{figures/crossover.pdf}
+\includegraphics[width=0.62\linewidth]{crossover.pdf}
 \caption{CPU/GPU wall-clock ratio on identical configurations. Ratios below one
 indicate shorter CPU wall time. A ratio above one occurred only for the
 2048-spin sparse instance at $D=32$. Measurements used \texttt{Zipper},
 \texttt{SquareSingleNode}, $\beta=3$ and \texttt{max\_states}${=}128$ on an
-Intel Xeon Platinum 8462Y+ and one NVIDIA H100. Supplementary Table~S1 reports
-the complete values.}
+Intel Xeon Platinum 8462Y+ and one NVIDIA H100. Supplementary Material 1,
+Table S1, reports the complete values.}
 \label{fig:cross}
 \end{figure}
 \FloatBarrier
 
 \subsection{Profiling and allocation}
 
-On a profiled 128-spin solve, host-side CUDA API calls accounted for 27.0\% of
-wall time and other Julia work accounted for 66.5\%. This host workload explains
-the measured CPU/GPU crossover. Faster tensor kernels do not reduce host-side
-bookkeeping.
+On a profiled 128-spin solve, host-side CUDA API calls covered 27.0\% of the
+profiled span and GPU activities covered 6.6\%. These intervals may overlap, so
+at least 66.5\% of the span lay outside the two recorded categories. This large
+host interval is consistent with the measured CPU/GPU crossover. Faster tensor
+kernels do not reduce host-side bookkeeping.
 
 Kernel-level batching could reduce device idle time. We did not implement it
-because eliminating the entire CUDA API share would limit the speed-up to about
-$1.4\times$. Host allocation could be reduced directly. In the published code,
-\texttt{branch\_states} accounted for 52.7\% of the bytes allocated by a
-128-spin solve. This motivated two changes (Figure~\ref{fig:alloc}). First, a
-single matrix now stores branched configurations instead of tens of thousands of
-small vectors per call. Allocated bytes fell by about 4\% in the large GPU run
-and 1\% in the corresponding CPU run. The main effect is a lower live-object
-count. Second, multi-tensor contraction temporaries moved from the collected
-heap to explicit allocation. This reduced allocated bytes for a 2048-spin,
-bond-32 CPU solve by about two thirds, from 90.9 to 32~GiB. Both changes were
-measured in a full solve. The explicit allocator was not faster in isolation.
-Its benefit comes from removing allocations from the collected heap.
+because eliminating the entire measured CUDA API share gives an Amdahl-style
+upper bound of about $1.4\times$ for this profile. Host allocation could be
+reduced directly. In the published code, \texttt{branch\_states} accounted for
+52.7\% of the bytes allocated by a 128-spin solve. This motivated two changes
+(Figure~\ref{fig:alloc}). First, a single matrix now stores branched
+configurations instead of tens of thousands of small vectors per call. Allocated
+bytes fell by about 4\% in the large GPU run and 1\% in the corresponding CPU
+run. The main effect is a lower live-object count. Second, multi-tensor
+contraction temporaries moved from the collected heap to explicit allocation.
+This reduced allocated bytes for a 2048-spin, bond-32 CPU solve by about two
+thirds, from 90.9 to 32~GiB. Both changes were measured in a full solve. The
+explicit allocator was not faster in isolation. Its benefit comes from removing
+allocations from the collected heap.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{figures/allocation.pdf}
+\includegraphics[width=\linewidth]{allocation.pdf}
 \caption{Allocated memory before and after the two allocation changes, on a
 2048-spin bond-32 solve, with percentages giving the reduction. ``states'' is
 the matrix-backed branched configuration set and ``temp.'' the off-heap
 contraction temporaries. Moving the temporaries reduced CPU heap allocation by
-about two thirds. The states change has a small effect on allocated
-\emph{bytes} because
-it primarily reduces the live-object count. The post-change totals were
-reproduced on both tested systems. The H100 run allocated 32.3~GiB on CPU and
-24.1~GiB on GPU.}
+about two thirds. The states change has a small effect on allocated \emph{bytes}
+because it primarily reduces the live-object count. The post-change totals were
+32.3~GiB on CPU and 24.1~GiB on GPU on the H100 test system.}
 \label{fig:alloc}
 \end{figure}
 \FloatBarrier
@@ -365,12 +369,13 @@ The new diagnostic exposes substantial truncation loss in cold contractions when
 no exact answer is available, the regime the method targets. The consolidation
 and the deprecation shims make the published interface reproducible, and
 shipping the benchmark instances closes a gap in that reproducibility that
-predates this update. The raw per-run data and figure scripts behind the figures
-and tables, together with runnable drivers for the crossover, concurrency,
-diversity, energy-vs-runtime, contraction-error and $\beta$-ladder results, are
-provided as supplementary material accompanying this article in the
-\texttt{benchmarks/} directory. The allocation figure's pre-change values are
-recorded measurements of the superseded code.
+predates this update. Supplementary Material 1 summarizes the additional
+results, measurement protocols, provenance and regression coverage.
+Supplementary Data 1 contains the \texttt{benchmarks/} directory with raw
+per-run data, figure scripts and runnable drivers for the crossover,
+concurrency, diversity, energy-vs-runtime, contraction-error and
+$\beta$-ladder results. The allocation figure's pre-change values are recorded
+measurements of the superseded code.
 
 Warm starting currently covers only the bottom boundary MPS, so layouts that
 build the top boundary do not benefit on those rows. $\sum\varepsilon$ did not
@@ -380,6 +385,14 @@ rather than a selection criterion.
 
 %% Keep pending floats before the reference list without forcing a page break.
 \FloatBarrier
+
+\section*{Supplementary files}
+
+\noindent\textbf{Supplementary Material 1.} Benchmark protocols, additional
+results, provenance and validation.
+
+\noindent\textbf{Supplementary Data 1.} Reproduction drivers, raw and
+summarized CSV data, plotting scripts, generated figures and README.
 
 \section*{Acknowledgements}
 \label{acknowledgements}
