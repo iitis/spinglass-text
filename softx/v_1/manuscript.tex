@@ -55,14 +55,16 @@ of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
 \begin{abstract}
 This update consolidates \texttt{SpinGlassPEPS.jl}'s four separately registered
 packages into one installable package with a curated public API. Truncating
-factorizations now report the weight they discard, so a heuristic contraction
-can bound its own error without an exact oracle. An inverse-temperature ladder
-replaces the original scalar $\beta$, warm-starting each rung from the previous
-boundary matrix product state, which is ${\approx}25\%$ faster. Profiling shows
-the solver is host-bound. Moving contraction temporaries off the collected heap
-cuts a 2048-spin bond-32 solve's allocated memory by about two-thirds (90.9 to
-32~GiB on CPU). On an H100 the device overtakes the host only in the largest
-sparse case measured, later than the original article implies.
+factorizations now report their relative discarded weight, providing an oracle-free
+diagnostic of truncation loss for cold-started contractions. An
+inverse-temperature ladder supplements scalar $\beta$ and, where compatible,
+initializes later rungs from retained boundary matrix product states. On a tested
+2048-spin instance this reduced warmed-rung wall time by ${\approx}24$--$25\%$
+($\approx16\%$ over the whole ladder). Profiling shows the solver is host-bound.
+Moving contraction temporaries off the collected heap cuts a 2048-spin bond-32
+solve's allocated memory by about two-thirds (90.9 to 32~GiB on CPU). On an H100
+the device overtakes the host only in the largest sparse case measured, later
+than the original article implies.
 \end{abstract}
 
 \begin{keyword}
@@ -122,16 +124,18 @@ C8 & Support email for questions & \texttt{lpawela@iitis.pl} \\
 \section{Description of the software-update}
 \label{Description of the software-update}
 
-\textbf{Motivation.} The original
-publication~\cite{smierzchalski2025spinglasspeps} described
+\subsection{Motivation and software consolidation}
+
+The original publication~\cite{smierzchalski2025spinglasspeps} described
 \texttt{SpinGlassPEPS.jl} as separately registered
 Julia~\cite{bezanson2017julia} packages in version lockstep, whose interface had
 since drifted: renames shipped without deprecation paths. The solver also
-reported no measure of how much its heuristic contraction discarded, so a result
-could be validated only against an exact oracle, as the original benchmark had
-to do when it certified ground states with CPLEX. Algorithms and an extensive
-benchmark campaign are described separately~\cite{dziubyna2024limitations}.
-This, current version is archived on Zenodo~\cite{spinglasspeps_zenodo}.
+reported no measure of truncation loss during its heuristic contraction, leaving
+users without an internal diagnostic when an exact reference solution was
+unavailable. The original benchmark instead certified ground states with CPLEX.
+Algorithms and an extensive benchmark campaign are described
+separately~\cite{dziubyna2024limitations}. This current version is archived on
+Zenodo~\cite{spinglasspeps_zenodo}.
 
 All the packages are consolidated into one. The four implementation packages
 \texttt{SpinGlassTensors}, \texttt{SpinGlassNetworks},
@@ -160,22 +164,25 @@ benchmark instances at the size used by the original article's figures are now
 shipped with the package, since the published listing resolved them from a directory
 that did not contain them.
 
+\subsection{Discarded-weight diagnostics and parameter selection}
+
 Every truncating factorization now records the relative weight it discards,
-$\varepsilon_i = \lVert\Sigma_{\text{dropped}}\rVert^2/\lVert\Sigma\rVert^2$,
-into an accumulator scoped to the running task, so concurrent solves cannot pool
-statistics. A solve reports $\sum_i\varepsilon_i$, the leading term of the
-accumulated fidelity loss of a boundary-MPS sweep, together with
-$\max_i\varepsilon_i$. It also counts the truncations in which the
+$\varepsilon_i = \lVert\Sigma_{\text{dropped}}\rVert_F^2/
+\lVert\Sigma\rVert_F^2$, into an accumulator scoped to the running task, so
+concurrent solves cannot pool statistics. A solve reports $\sum_i\varepsilon_i$
+as an aggregate diagnostic of truncation loss across a boundary-MPS sweep,
+together with $\max_i\varepsilon_i$. It also counts the truncations in which the
 bond-dimension bound, rather than the singular-value tolerance, forced a
 non-negligible discard, and it records how many dimensions were retained out of
 those offered. Those last two quantities were not available in the original
 release. On a 128-spin instance, bond dimension $D=4$ gives $\sum\varepsilon =
 3.1\times10^{-4}$ with all 18 truncations forced by the bond bound, retaining
-108 of 307 singular values. At $D=32$ the same solve gives $5.6\times10^{-14}$
-with no truncation bond-limited, retaining 192 of 592. A bond-limited count of
-zero means that no bond-capped truncation discarded relative weight above the
-$10^{-12}$ reporting threshold, so no change from raising $D$ is expected at the
-reported precision.
+108 of 307 singular values. At $D=32$ the same solve gives $5.6\times10^{-14}$,
+with none of its four recorded truncations bond-limited, retaining 192 of 592
+singular values. A bond-limited count of zero means that no bond-capped
+truncation discarded relative weight above the $10^{-12}$ reporting threshold.
+Thus the diagnostic gives no indication that increasing $D$ would materially
+change this cold contraction at the reported precision.
 
 Across the eight-transformation protocol the solver additionally reports the
 spread of energies and how many transformations reached the best one. Agreement
@@ -188,22 +195,24 @@ The inverse temperature $\beta$ is the most consequential parameter and was also
 the hardest to choose. If it is too small, the conditional probabilities the
 search branches on say little about the ground state. The original interface
 nonetheless took a scalar whose optimum its own documentation described as
-instance-dependent. \texttt{beta\_ladder} walks an increasing schedule in which
-each rung reuses the previous rung's boundary MPS to start variational
-compression, instead of forming $W\psi$ exactly and truncating it. Where
-boundary-MPS construction dominates (2048-spin instance) a warm-started rung is
-${\approx}25\%$ faster for identical energies (median paired cold/warm ratios of
-$1.32$ and $1.34$ over five interleaved rounds, or ${\approx}16\%$ over the
-whole ladder). The gain is bounded by the share of the solve spent building
-boundary MPS, and it is smaller where the search dominates.
+instance-dependent. The update therefore adds \texttt{beta\_ladder}, which walks
+an increasing schedule in which each rung reuses the previous rung's boundary
+MPS to start variational compression, instead of forming $W\psi$ exactly and
+truncating it. On the tested 2048-spin instance, where boundary-MPS construction
+dominates, warm starting reduced the two warmed rungs' wall times by about 24\%
+and 25\% relative to independent cold builds, with identical energies (median
+paired cold/warm time ratios of $1.32$ and $1.34$ over five interleaved rounds).
+Because the first rung is cold in both protocols, the reduction over the full
+ladder was about 16\%. The benefit is limited by the share of the solve spent
+building boundary MPS and is smaller where the search dominates.
 
-Two limitations bound what the discarded-weight measure can do. Warm starting is
-incompatible with it, because a warm start optimizes \emph{within} a fixed bond
-dimension and never truncates, so it reports $\sum\varepsilon\approx0$ whatever
-its accuracy. Its error is a variational gap that the log cannot see. The
-$\sum\varepsilon$ is therefore meaningful only for cold builds, and the package
-warns when \texttt{max\_discarded} is combined with a warm start. A second
-limitation is that $\sum\varepsilon$ does not rank solution quality. In
+The discarded-weight diagnostic has two limitations. First, it does not capture
+the approximation introduced by a warm start: a warm start optimizes
+\emph{within} a fixed bond dimension without a truncating factorization and can
+therefore report $\sum\varepsilon\approx0$ regardless of its variational gap.
+Consequently, $\sum\varepsilon$ is not a complete error diagnostic for a
+warm-started build. The package warns when \texttt{max\_discarded} is combined
+with a warm start. Second, $\sum\varepsilon$ does not rank solution quality. In
 Figure~\ref{fig:evr}(c) the energy error falls monotonically with $\beta$,
 reaching the best energy found in 9 of 10 instances at $\beta=6$, while
 $\sum\varepsilon$ peaks at $\beta=4$ and then falls, because a sharply peaked
@@ -224,6 +233,34 @@ transformations gives two or three mutually distant solutions on four of five
 instances, with pairwise distances reaching $1249$ of a possible $1250$. This
 argues for sweeping the transformations on grounds independent of energy. It
 holds even where the transformations agree on the energy to several digits.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/quality.pdf}
+\caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension
+8, on CPU. (a) Time to solution against relative energy error as the search
+breadth $M=$~\texttt{max\_states} varies over $16$--$1024$. Points are
+individual instances, the line their median. (b) The same runs per instance. (c)
+Median energy error and median discarded weight $\sum_i\varepsilon_i$ against
+$\beta$, annotations count the instances that reached the best energy found.
+$E_{\mathrm{best}}$ is the lowest energy over all settings shown, not a
+certified optimum, so zero error means best found rather than optimal. (d)
+Spread of the returned solutions at $M=1024$. These instances carry no local
+fields, so $E(\sigma)=E(-\sigma)$ and every state has a degenerate mirror at
+Hamming distance $N$; distances are therefore quotient distances $\min(d,N-d)$
+on a space of diameter $N/2$. Band and line give medians over the ten instances
+of the $50$th, $90$th and $100$th percentile of the distance from each returned
+state to the best one, all a factor of eight to sixty below the $N/4$ threshold.
+The single point above that threshold ($\beta=8$, instance 1) is a degraded
+contraction rather than a second optimum: its energy is $8$ above that
+instance's best and it does not return even the exact mirror. Square markers
+repeat the measurement across contraction orders, taking one state from each of
+the eight lattice transformations at $\beta=4$ and reporting the median over
+five instances of the pairwise minimum, median and maximum.}
+\label{fig:evr}
+\end{figure}
+
+\subsection{Transformation sweeps and hardware performance}
 
 The standard protocol solves each instance once per lattice transformation, a
 loop that previously lived in user code. \texttt{sweep\_transformations} now
@@ -272,42 +309,6 @@ Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.83 & 1.22 & \textbf{1.43} 
 \end{tabular}
 \end{table}
 
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/quality.pdf}
-\caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension
-8, on CPU. (a) Time to solution against relative energy error as the search
-breadth $M=$~\texttt{max\_states} varies over $16$--$1024$. points are
-individual instances, the line their median. (b) The same runs per instance. (c)
-Median energy error and median discarded weight $\sum_i\varepsilon_i$ against
-$\beta$, annotations count the instances that reached the best energy found.
-$E_{\mathrm{best}}$ is the lowest energy over all settings shown, not a
-certified optimum, so zero error means best found rather than optimal. (d)
-Spread of the returned solutions at $M=1024$. These instances carry no local
-fields, so $E(\sigma)=E(-\sigma)$ and every state has a degenerate mirror at
-Hamming distance $N$; distances are therefore quotient distances $\min(d,N-d)$
-on a space of diameter $N/2$. Band and line give medians over the ten instances
-of the $50$th, $90$th and $100$th percentile of the distance from each returned
-state to the best one, all a factor of eight to sixty below the $N/4$ threshold.
-The single point above that threshold ($\beta=8$, instance 1) is a degraded
-contraction rather than a second optimum: its energy is $8$ above that
-instance's best and it does not return even the exact mirror. Square markers
-repeat the measurement across contraction orders, taking one state from each of
-the eight lattice transformations at $\beta=4$ and reporting the median over
-five instances of the pairwise minimum, median and maximum.}
-\label{fig:evr}
-\end{figure}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.62\linewidth]{figures/crossover.pdf}
-\caption{CPU/GPU wall-clock ratio on identical configurations, so values below
-one mean the host is faster. The device wins only once both the instance and the
-bond dimension are large. Data as in Table~\ref{tab:cross}.}
-\label{fig:cross}
-\end{figure}
-
 The original article recommends the GPU for its larger examples without
 qualification. Solving identical configurations on each device
 (Figure~\ref{fig:cross}, Table~\ref{tab:cross}) shows that this holds only for
@@ -320,6 +321,15 @@ the host by ${\approx}10\%$, and energies agree in every cell. On the tested
 Xeon/H100 system the CPU is therefore preferable for exploratory work in the
 smaller or dense configurations, and the device is worth using in the
 D-Wave-scale sparse regime at large bond dimensions.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/crossover.pdf}
+\caption{CPU/GPU wall-clock ratio on identical configurations, so values below
+one mean the host is faster. The device wins only once both the instance and the
+bond dimension are large. Data as in Table~\ref{tab:cross}.}
+\label{fig:cross}
+\end{figure}
 
 \begin{table}[t]
 \small
@@ -343,25 +353,13 @@ Spins & $D{=}8$ & $D{=}16$ & $D{=}32$ & $D{=}64$ \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/allocation.pdf}
-\caption{Allocated memory before and after the two allocation changes, on a
-2048-spin bond-32 solve, with percentages giving the reduction. ``states'' is
-the matrix-backed branched configuration set and ``temp.'' the off-heap
-contraction temporaries. The temporaries change removes about two-thirds of the
-CPU heap. The states change is small in \emph{bytes} because its benefit is a
-reduced live-object count, not a reduced volume. The post-change allocation
-totals were reproduced on both tested systems, and the H100 run gives 32.3~GiB
-on CPU and 24.1~GiB on GPU.}
-\label{fig:alloc}
-\end{figure}
+\subsection{Profiling and allocation}
 
-\textbf{Profiling and allocation.} On a profiled 128-spin solve the host was the
-bottleneck, not the device. Host-side CUDA API calls account for only about a
-quarter of wall time, and most of the rest is host-side Julia work. Being
-host-bound keeps the CPU competitive across the measured crossover, and
-accelerating the tensor work removes none of the host-side bookkeeping.
+On a profiled 128-spin solve the host was the bottleneck, not the device.
+Host-side CUDA API calls account for only about a quarter of wall time, and most
+of the rest is host-side Julia work. Being host-bound keeps the CPU competitive
+across the measured crossover, and accelerating the tensor work removes none of
+the host-side bookkeeping.
 
 With the device mostly idle, kernel-level batching is the obvious next step. We
 did not pursue it, because eliminating the entire CUDA API share would cap the
@@ -380,17 +378,32 @@ Both reductions were measured in a full solve, since the explicit allocator is
 no faster in isolation and pays only through the allocations it removes from the
 collected heap.
 
-\textbf{Impact, limitations and outlook.} Contraction error is now observable,
-so substantial contraction loss can be detected on problems where no exact
-answer is available, the regime the method targets. The consolidation and the
-deprecation shims make the published interface reproducible, and shipping the
-benchmark instances closes a gap in that reproducibility that predates this
-update. The raw per-run data and figure scripts behind the figures and tables,
-together with runnable drivers for the crossover, concurrency, diversity,
-energy-vs-runtime, contraction-error and $\beta$-ladder results, are provided as
-supplementary material accompanying this article in the \texttt{benchmarks/}
-directory. The allocation figure's pre-change values are recorded measurements
-of the superseded code.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/allocation.pdf}
+\caption{Allocated memory before and after the two allocation changes, on a
+2048-spin bond-32 solve, with percentages giving the reduction. ``states'' is
+the matrix-backed branched configuration set and ``temp.'' the off-heap
+contraction temporaries. The temporaries change removes about two-thirds of the
+CPU heap. The states change is small in \emph{bytes} because its benefit is a
+reduced live-object count, not a reduced volume. The post-change allocation
+totals were reproduced on both tested systems, and the H100 run gives 32.3~GiB
+on CPU and 24.1~GiB on GPU.}
+\label{fig:alloc}
+\end{figure}
+
+\subsection{Impact, limitations and outlook}
+
+The new diagnostic exposes substantial truncation loss in cold contractions when
+no exact answer is available, the regime the method targets. The consolidation
+and the deprecation shims make the published interface reproducible, and
+shipping the benchmark instances closes a gap in that reproducibility that
+predates this update. The raw per-run data and figure scripts behind the figures
+and tables, together with runnable drivers for the crossover, concurrency,
+diversity, energy-vs-runtime, contraction-error and $\beta$-ladder results, are
+provided as supplementary material accompanying this article in the
+\texttt{benchmarks/} directory. The allocation figure's pre-change values are
+recorded measurements of the superseded code.
 
 Warm starting currently covers only the bottom boundary MPS, so layouts that
 build the top boundary do not benefit on those rows. $\sum\varepsilon$ did not
