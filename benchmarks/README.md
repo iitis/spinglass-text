@@ -29,6 +29,13 @@ few hours end to end, dominated by per-process JIT and the 2048-spin cells. Raw
 CSVs are written incrementally, so a failed step keeps completed work. Individual
 drivers can also be run by hand via their `ENV` variables (see each file's header).
 
+`SEED` is the base seed. The energy/runtime and within-order diversity drivers
+use `SEED + instance`, reseed immediately before every solve, and record the
+derived seed in each newly generated CSV row. Reusing one stream per instance
+provides common random numbers across search breadth and inverse temperature,
+keeps results independent of loop order, and aligns matching configurations in
+the two drivers.
+
 ## Contents
 
 | File | Role |

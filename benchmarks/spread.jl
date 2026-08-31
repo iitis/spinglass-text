@@ -15,8 +15,14 @@
 using SpinGlassPEPS, CUDA
 using SpinGlassPEPS.SpinGlassEngine: no_merge
 using Statistics: median
+using Random
 
 const AR = 0.01
+const BASE_SEED = parse(Int64, get(ENV, "SEED", "1"))
+
+# Keep this mapping identical to sweep50.jl. Reusing one stream per instance
+# holds the randomized contraction sketch fixed across beta values.
+instance_seed(instance) = BASE_SEED + Int64(instance)
 
 dq(a, b, N) = (d = sum(a .!= b); min(d, N - d))
 
@@ -35,15 +41,17 @@ function main()
     betas = parse.(Float64, split(get(ENV, "BETAS", "2.0,4.0,6.0"), ","))
     out = open(get(ENV, "OUT", "div3.csv"), "w")
     println(out, "instance,beta,energy,n_within,n_distinct_E,div_raw,div_quotient,",
-                 "dq50,dq90,dqmax,raw_dmax,time_s")
+                 "dq50,dq90,dqmax,raw_dmax,time_s,seed")
     flush(out)
     for k = 1:parse(Int, get(ENV, "NINST", "10")), β in betas
+        seed = instance_seed(k)
         ph = potts_hamiltonian(ising_graph(joinpath(dir, lpad(k,3,'0')*".txt"));
                  spectrum=full_spectrum, cluster_assignment_rule=super_square_lattice((m,n,t)))
         net = PEPSNetwork{SquareSingleNode{GaugesEnergy},Dense,Float64}(m, n, ph, rotation(0))
         ctr = MpsContractor(Zipper, net,
             MpsParameters{Float64}(; bond_dim=8, var_tol=1e-8, num_sweeps=4, tol_SVD=1e-16);
             onGPU=false, beta=β, graduate_truncation=true)
+        Random.seed!(seed)
         tt = @elapsed sol, _ = low_energy_spectrum(ctr,
                 SearchParameters(; max_states=1024, cutoff_prob=0.0), no_merge;
                 show_progress=false)
@@ -68,7 +76,7 @@ function main()
 
         println(out, "$k,$β,$Eb,$(length(keep)),",
                 "$(length(unique(round.(sol.energies[keep], digits=9)))),",
-                "$raw,$vq,$(q(0.5)),$(q(0.9)),$(dd[end]),$rawmax,$tt")
+                "$raw,$vq,$(q(0.5)),$(q(0.9)),$(dd[end]),$rawmax,$tt,$seed")
         flush(out)
         @info "inst $k β=$β" Eb raw vq dq50=q(0.5) dq90=q(0.9) dqmax=dd[end]
     end

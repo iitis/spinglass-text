@@ -3,17 +3,26 @@
 using SpinGlassPEPS, CUDA
 using SpinGlassPEPS.SpinGlassEngine: no_merge
 using Base.ScopedValues: with
+using Random
 
 const OUT = get(ENV, "OUT", "sweep50_cpu.csv")
 const NINST = parse(Int, get(ENV, "NINST", "10"))
+const BASE_SEED = parse(Int64, get(ENV, "SEED", "1"))
 
-function solve1(ph, m, n; D, ms, β, onGPU)
+# Reset every parameter cell for one instance to the same random stream. This
+# uses common random numbers when varying max_states or beta, keeps comparisons
+# independent of loop order, and matches the corresponding cells in spread.jl.
+instance_seed(instance) = BASE_SEED + Int64(instance)
+
+function solve1(ph, m, n; D, ms, β, onGPU, seed)
     net = PEPSNetwork{SquareSingleNode{GaugesEnergy},Dense,Float64}(m, n, ph, rotation(0))
     ctr = MpsContractor(Zipper, net,
         MpsParameters{Float64}(; bond_dim=D, var_tol=1e-8, num_sweeps=4, tol_SVD=1e-16);
         onGPU=onGPU, beta=β, graduate_truncation=true)
     log = TruncationLog()
     local sol
+    Random.seed!(seed)
+    onGPU && CUDA.seed!(seed)
     t = @elapsed sol = first(with(TRUNCATION_LOG => log) do
         low_energy_spectrum(ctr, SearchParameters(; max_states=ms, cutoff_prob=0.0),
                             no_merge; show_progress=false)
@@ -28,12 +37,13 @@ function main()
     dir = joinpath(pkgdir(SpinGlassPEPS), "benchmark", "instances", "square_50x50")
     m, n, t = 50, 50, 1
     io = open(OUT, "w")
-    println(io, "instance,device,series,bond_dim,max_states,beta,time_s,energy,sum_eps,saturated")
+    println(io, "instance,device,series,bond_dim,max_states,beta,time_s,energy,sum_eps,saturated,seed")
     flush(io)
     # warm up JIT on the first instance, cheapest setting
     ph1 = potts_hamiltonian(ising_graph(joinpath(dir,"001.txt")); spectrum=full_spectrum,
               cluster_assignment_rule=super_square_lattice((m,n,t)))
-    solve1(ph1, m, n; D=4, ms=16, β=1.0, onGPU=onGPU)
+    warmup_seed = instance_seed(0)
+    solve1(ph1, m, n; D=4, ms=16, β=1.0, onGPU=onGPU, seed=warmup_seed)
 
     for k in 1:NINST
         f = joinpath(dir, lpad(k,3,'0') * ".txt")
@@ -41,13 +51,19 @@ function main()
                  cluster_assignment_rule=super_square_lattice((m,n,t)))
         # (1) search-breadth series: the genuine time/quality knob
         for ms in (16, 64, 256, 1024)
-            (tt,E,eps,sat) = solve1(ph, m, n; D=8, ms=ms, β=4.0, onGPU=onGPU)
-            println(io, "$k,$dev,max_states,8,$ms,4.0,$tt,$E,$eps,$sat"); flush(io)
+            seed = instance_seed(k)
+            (tt,E,eps,sat) = solve1(
+                ph, m, n; D=8, ms=ms, β=4.0, onGPU=onGPU, seed=seed,
+            )
+            println(io, "$k,$dev,max_states,8,$ms,4.0,$tt,$E,$eps,$sat,$seed"); flush(io)
         end
         # (2) beta series: checks whether the non-monotonicity generalizes
         for β in (2.0, 3.0, 4.0, 6.0, 8.0)
-            (tt,E,eps,sat) = solve1(ph, m, n; D=8, ms=256, β=β, onGPU=onGPU)
-            println(io, "$k,$dev,beta,8,256,$β,$tt,$E,$eps,$sat"); flush(io)
+            seed = instance_seed(k)
+            (tt,E,eps,sat) = solve1(
+                ph, m, n; D=8, ms=256, β=β, onGPU=onGPU, seed=seed,
+            )
+            println(io, "$k,$dev,beta,8,256,$β,$tt,$E,$eps,$sat,$seed"); flush(io)
         end
         @info "instance $k done"
     end

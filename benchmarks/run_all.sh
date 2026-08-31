@@ -83,13 +83,13 @@ python3 "$HERE/summarize_concurrency.py" "$CONC" "$HERE/concurrency.csv" || echo
 #    Existing drivers; read the 100 recovered 50x50 instances from the package.
 # ---------------------------------------------------------------------------
 echo "-- energy-vs-runtime sweep (CPU) --"
-OUT="$HERE/sweep50_cpu.csv" NINST=10 DEV=cpu CUDA_VISIBLE_DEVICES="" run "$HERE/sweep50.jl" \
+OUT="$HERE/sweep50_cpu.csv" NINST=10 DEV=cpu SEED=$SEED CUDA_VISIBLE_DEVICES="" run "$HERE/sweep50.jl" \
   || echo "  !! sweep50 failed"
 echo "-- solution spread, beta 2,4,6 --"
-OUT="$HERE/div3.csv"       NINST=10 BETAS="2.0,4.0,6.0" CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/spread.jl" \
+OUT="$HERE/div3.csv"       NINST=10 BETAS="2.0,4.0,6.0" SEED=$SEED CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/spread.jl" \
   || echo "  !! spread(2,4,6) failed"
 echo "-- solution spread, beta 3,8 --"
-OUT="$HERE/div3_extra.csv" NINST=10 BETAS="3.0,8.0"     CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/spread.jl" \
+OUT="$HERE/div3_extra.csv" NINST=10 BETAS="3.0,8.0"     SEED=$SEED CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/spread.jl" \
   || echo "  !! spread(3,8) failed"
 echo "-- cross-transformation valley distances --"
 OUT="$HERE/xtransform.csv" NINST=5 CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/xtransform.jl" \
