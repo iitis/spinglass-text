@@ -58,17 +58,16 @@ of Sciences, Ba\l{}tycka 5, 44-100 Gliwice, Poland}
 
 \begin{abstract}
 This update consolidates \texttt{SpinGlassPEPS.jl}'s four separately registered
-packages into one installable package with a curated public API. Truncating
-factorizations now report their relative discarded weight, providing an
-oracle-free diagnostic of truncation loss for cold-started contractions. An
-inverse-temperature ladder supplements scalar $\beta$ and, where compatible,
-initializes later rungs from retained boundary matrix product states. On a
-tested 2048-spin instance this reduced warmed-rung wall time by
-${\approx}24$--$25\%$ ($\approx16\%$ over the whole ladder). Profiling shows the
-solver is host-bound. Moving contraction temporaries off the collected heap cuts
-a 2048-spin bond-32 solve's allocated memory by about two-thirds (90.9 to 32~GiB
-on CPU). On the tested H100, GPU wall time was shorter only for the largest
-sparse case measured.
+packages into one installable package with a defined public API. Truncating
+factorizations now report relative discarded weight, an internal measure of
+truncation loss for cold-started contractions. A new inverse-temperature ladder
+can initialize later rungs from retained boundary matrix product states. On a
+tested 2048-spin instance, warm starts reduced the two warmed rungs' wall times
+by ${\approx}24$--$25\%$ and total ladder time by $\approx16\%$. Host work
+dominated the profiled case. Moving contraction temporaries off the
+garbage-collected heap reduced allocated memory for a 2048-spin bond-32 CPU solve
+from 90.9 to 32~GiB. On the tested H100, GPU wall time was lower only for the
+largest sparse case measured.
 \end{abstract}
 
 \begin{keyword}
@@ -132,107 +131,103 @@ C8 & Support email for questions & \texttt{lpawela@iitis.pl} \\
 
 \subsection{Motivation and software consolidation}
 
-The original publication~\cite{smierzchalski2025spinglasspeps} described
-\texttt{SpinGlassPEPS.jl} as separately registered
-Julia~\cite{bezanson2017julia} packages in version lockstep, whose interface had
-since drifted: renames shipped without deprecation paths. The solver also
-reported no measure of truncation loss during its heuristic contraction, leaving
-users without an internal diagnostic when an exact reference solution was
-unavailable. The original benchmark instead certified ground states with CPLEX.
-Algorithms and an extensive benchmark campaign are described
-separately~\cite{dziubyna2025limitations}. Version 2.0.1 is archived on
+The software described in the original publication~\cite{smierzchalski2025spinglasspeps}
+consisted of separately registered Julia~\cite{bezanson2017julia} packages whose
+version numbers were kept in sync. Their interfaces later diverged, and renamed
+symbols lacked deprecation paths. The solver did not report truncation loss
+during heuristic contraction, so users had no internal diagnostic without an
+exact reference solution. The original benchmarks used CPLEX to certify ground
+states. A separate study describes the algorithms and benchmark
+campaign~\cite{dziubyna2025limitations}. Version 2.0.1 is archived on
 Zenodo~\cite{spinglasspeps_zenodo}.
 
-All the packages are consolidated into one. The four implementation packages
-\texttt{SpinGlassTensors}, \texttt{SpinGlassNetworks},
-\texttt{SpinGlassExhaustive} and \texttt{SpinGlassEngine} are now internal
-modules of a single installable \texttt{SpinGlassPEPS}. \texttt{pkg> add
-SpinGlassPEPS} installs the complete solver. \texttt{using SpinGlassPEPS} brings
-a curated surface of roughly eighty documented symbols, while the previous stack
-re-exported some 240. All the lower-level kernels remain reachable through the
-submodules.
+Version 2.0.1 consolidates the four implementation packages as internal modules
+of one installable package, \texttt{SpinGlassPEPS}. These modules are
+\texttt{SpinGlassTensors} and \texttt{SpinGlassNetworks}, together with
+\texttt{SpinGlassExhaustive} and \texttt{SpinGlassEngine}.
+\texttt{pkg> add SpinGlassPEPS} installs the complete solver.
+The package exports about 80 documented symbols, compared with about 240
+re-exported by the previous stack.
+Lower-level kernels remain accessible through the submodules.
 
-The clustered Hamiltonian is now a concrete \texttt{PottsHamiltonian} type with
-typed fields read through accessors, rather than a \texttt{MetaGraphs} property
-bag consulted dynamically inside the search loop. The process-global memoization
-that cached boundary matrix product states (MPS), MPO layers and environments
-has been replaced by a contraction cache owned by each contractor, with explicit
-per-row eviction. The global cache was not thread-safe and required manual
-clearing. The contractor-owned cache enables concurrent solves.
+The clustered Hamiltonian now uses a concrete \texttt{PottsHamiltonian} with
+typed fields and accessors instead of querying a \texttt{MetaGraphs} property bag
+inside the search loop. Each contractor owns its cache of boundary MPS, MPO
+layers and environments and evicts entries after each row. This replaces the
+process-wide cache, which was not thread-safe and required manual clearing, and
+permits concurrent solves.
 
 \subsection{Correctness fixes and validation}
 
-The update corrects two result-affecting defects. \texttt{corner\_matrix} failed
+The update fixes two result-affecting defects. \texttt{corner\_matrix} failed
 for every \texttt{SiteTensor} input and permuted the trailing dimensions of
-\texttt{VirtualTensor} outputs. Independent dense-reference tests now cover both
-implementations on CPU and GPU. The exhaustive GPU search also launched too few
+\texttt{VirtualTensor} outputs. Tests against independent dense references now
+cover both tensor types on CPU and GPU. The exhaustive GPU search launched too few
 blocks and returned incomplete spectra for problems with at least ten spins. A
 deterministic ten-spin regression test compares all 1024 GPU state codes and
-energies with complete CPU enumeration across two 512-thread blocks.
+energies produced by two 512-thread blocks against complete CPU enumeration.
 
-The package now includes the benchmark instances used by the original article's
-figures. The published listing referenced a directory that was not distributed.
+The package now distributes the benchmark instances used for the original
+article's figures. The published listing referenced a directory that was absent
+from the distribution.
 
 \subsection{Discarded-weight diagnostics and parameter selection}
 
-Every truncating factorization now records the relative weight it discards,
+Each truncating factorization records the relative weight it discards,
 $\varepsilon_i = \lVert\Sigma_{\text{dropped}}\rVert_F^2/
-\lVert\Sigma\rVert_F^2$, into an accumulator scoped to the running task, so
-concurrent solves cannot pool statistics. A solve reports $\sum_i\varepsilon_i$
-as an aggregate diagnostic of truncation loss across a boundary-MPS sweep,
-together with $\max_i\varepsilon_i$. It also counts the truncations in which the
-bond-dimension bound, rather than the singular-value tolerance, forced a
-non-negligible discard, and it records how many dimensions were retained out of
-those offered. Those last two quantities were not available in the original
-release. On a 128-spin instance, bond dimension $D=4$ gives $\sum\varepsilon =
+\lVert\Sigma\rVert_F^2$, in a task-local accumulator. This prevents concurrent
+solves from mixing statistics. A solve reports $\sum_i\varepsilon_i$ and
+$\max_i\varepsilon_i$. It also reports the number of truncations for which the
+bond-dimension bound, rather than the singular-value tolerance, caused a
+non-negligible discard and the number of retained dimensions out of those
+offered. The original release reported neither of the latter quantities. On a
+128-spin instance, bond dimension $D=4$ gives $\sum\varepsilon =
 3.1\times10^{-4}$ with all 18 truncations forced by the bond bound, retaining
 108 of 307 singular values. At $D=32$ the same solve gives $5.6\times10^{-14}$,
 with none of its four recorded truncations bond-limited, retaining 192 of 592
 singular values. A bond-limited count of zero means that no bond-capped
 truncation discarded relative weight above the $10^{-12}$ reporting threshold.
-Thus the diagnostic gives no indication that increasing $D$ would materially
-change this cold contraction at the reported precision.
+For this cold contraction, the diagnostic does not indicate a need to increase
+$D$ at the reported precision.
 
-Across the eight-transformation protocol the solver additionally reports the
-spread of energies and how many transformations reached the best one. Agreement
-among eight distinct transformed contraction orders is an oracle-free
-consistency check. A spread that is a sizeable fraction of the energy scale
-shows that the result depends on the contraction order, which may reflect
-contraction or search error.
+For an eight-transformation sweep, the solver reports the energy range and the
+number of transformations that attain the minimum. Agreement across the eight
+contraction orders provides a consistency check without a reference solution.
+The relative energy range measures sensitivity to contraction order, which can
+arise from contraction or search error.
 
-The inverse temperature $\beta$ strongly affects solution quality. If it is too
-small, the conditional probabilities used for branching contain little
-information about the ground state. The original interface accepted a scalar
-$\beta$, although its documentation described the best value as
-instance-dependent. The update adds \texttt{beta\_ladder}, which evaluates an
-increasing schedule. When settings are compatible, each later rung initializes
-variational compression from the previous rung's boundary MPS instead of forming
-$W\psi$ exactly and truncating it. On the tested 2048-spin instance, where
+The inverse temperature $\beta$ controls how strongly the conditional branch
+probabilities favor low-energy states. At small $\beta$, these probabilities
+contain little information about the ground state. The original interface
+accepted one $\beta$ value, although its documentation noted that the best value
+depends on the instance. The update adds \texttt{beta\_ladder}, which evaluates an
+increasing schedule. When a retained boundary MPS has the physical dimensions
+required by the next rung, that rung uses it to initialize variational
+compression instead of forming $W\psi$ exactly and truncating it. On the tested
+2048-spin instance, where
 boundary-MPS construction dominates, warm starting reduced the two warmed rungs'
-wall times by about 24\%
-and 25\% relative to independent cold builds, with identical energies (median
-paired cold/warm time ratios of $1.32$ and $1.34$ over five interleaved rounds).
+wall times by about 24\% and 25\% relative to independent cold builds, with
+identical energies. Median paired cold/warm time ratios were $1.32$ and $1.34$
+over five interleaved rounds.
 Because the first rung is cold in both protocols, the reduction over the full
-ladder was about 16\%. The benefit is limited by the share of the solve spent
-building boundary MPS and is smaller where the search dominates.
+ladder was about 16\%. The speedup depends on the fraction of runtime spent
+constructing boundary MPS and is smaller when search dominates.
 
 For a cold ladder, a completed rung is marked trusted when its accumulated
 discarded weight satisfies $\sum_i\varepsilon_i \leq \texttt{max\_discarded}$.
 The routine selects the minimum-energy trusted rung. If no trusted rung has a
 valid energy, it returns the minimum-energy successful rung as a fallback and
-leaves it flagged as untrusted. The threshold is therefore a preference filter,
+leaves it flagged as untrusted. The threshold acts as a preference filter,
 not a hard acceptance criterion. Setting \texttt{stop\_when\_untrusted=true}
 terminates the ladder after the first successfully completed rung above the
-threshold. This option bounds cost but can miss a later acceptable or
+threshold. This can reduce cost, but it may miss a later acceptable or
 lower-energy rung because discarded weight is not monotone in $\beta$.
 
-The discarded-weight diagnostic has two limitations. First, it does not capture
-the approximation introduced by a warm start. A warm start optimizes
-\emph{within} a fixed bond dimension without a truncating factorization and can
-therefore report $\sum\varepsilon\approx0$ regardless of its variational gap.
-Consequently, $\sum\varepsilon$ is not a complete error diagnostic for a
-warm-started build. The package warns when \texttt{max\_discarded} is combined
-with a warm start. Second, $\sum\varepsilon$ does not rank solution quality. In
+The discarded-weight diagnostic does not measure warm-start error. A warm start
+optimizes within a fixed bond dimension without a truncating factorization, so
+it can report $\sum\varepsilon\approx0$ despite a nonzero variational gap. The
+package warns when \texttt{max\_discarded} is used with a warm start. Discarded
+weight also does not rank solution quality. In
 Figure~\ref{fig:evr}(c) the median energy error decreases to zero by $\beta=6$,
 where 9 of 10 instances reach the best energy found. The median
 $\sum\varepsilon$ peaks at $\beta=4$ and then falls, because a sharply peaked
@@ -241,17 +236,15 @@ $\beta=2$, the median $\sum\varepsilon$ was near its minimum but the median
 energy error was largest. At $\beta=4$, the median $\sum\varepsilon$ was largest
 and the median energy error was smaller.
 
-At the largest tested search breadth, $M=1024$, 49 of 50 runs remained within
-one valley under the $N/4$ criterion
-after quotienting the exact global spin-flip symmetry (Figure~\ref{fig:evr}(d)).
-In contrast, taking one result from each of the eight lattice transformations
-produced two or three distinct valleys on four of five instances. Pairwise
-quotient distances reached 1249 of 1250. For these five instances,
-transformation sweeps increased diversity while the relative energy spread
-across transformations remained between $2.21\times10^{-4}$ and
-$5.74\times10^{-4}$. Supplementary Material 1, Section S2, reports the per-run
-distance quantiles, per-instance transformation results and the exceptional
-$\beta=8$ run.
+At $M=1024$, 49 of 50 instance-temperature runs remained within one valley under
+the $N/4$ criterion after quotienting the exact global spin-flip symmetry
+(Figure~\ref{fig:evr}(d)). For four of five instances, the eight lattice
+transformations produced states in two or three valleys. The maximum pairwise
+quotient distance was 1249, compared with the maximum possible value of 1250.
+Across the five instances, the relative energy spread remained between
+$2.21\times10^{-4}$ and $5.74\times10^{-4}$.
+Supplementary Material 1, Section S2, reports distance quantiles for each run,
+transformation results for each instance and the exceptional $\beta=8$ run.
 
 \begin{figure}[!htbp]
 \centering
@@ -259,17 +252,18 @@ $\beta=8$ run.
 \caption{Ten 2500-spin ($50\times50$) square-lattice instances at bond dimension
 8 on CPU. (a) Time to solution versus relative energy error as
 $M=$~\texttt{max\_states} varies from 16 to 1024. Points show individual
-instances. The line shows their median. (b) The same measurements indexed by
-instance. (c) Median energy error and aggregate discarded weight
+instances. The line shows their median. (b) The same measurements grouped by
+instance. (c) Median energy error and median accumulated discarded weight
 $\sum_i\varepsilon_i$ versus $\beta$. Labels count instances that reached the
 best energy found. $E_{\mathrm{best}}$ is the lowest energy over all settings
 shown, not a certified optimum. (d) Solution spread at $M=1024$, measured by
 quotient distance $\min(d,N-d)$ to identify exact global spin-flip pairs. The
 band and line show medians over ten instances of the 50th, 90th and 100th
-percentiles of distance from each returned state to the best state. Squares
-summarize pairwise minimum, median and maximum distances among eight
-transformation results at $\beta=4$ over five instances. Supplementary
-Material 1, Section S2, provides definitions, per-instance data and analysis of
+percentiles of distance from each returned state to the best state. At
+$\beta=4$, the square marks the median across five instances of the pairwise
+median distance among eight transformation results. Its error bars extend to
+the corresponding medians of the pairwise minimum and maximum. Supplementary
+Material 1, Section S2, gives definitions, per-instance data and analysis of
 the $\beta=8$ outlier.}
 \label{fig:evr}
 \end{figure}
@@ -278,30 +272,34 @@ the $\beta=8$ outlier.}
 \subsection{Transformation sweeps and hardware performance}
 
 The standard protocol applies each lattice transformation once per instance.
-Previously, users implemented this loop. \texttt{sweep\_transformations} now
+Previously, users implemented this loop themselves. \texttt{sweep\_transformations}
 seeds each transformation deterministically because \texttt{Zipper} draws a
-random sketch and task scheduling can otherwise affect results. It also isolates
-failures and reports the diagnostics described above. Available device memory
-limits concurrency. A calibration solve measures peak memory, and admission is
-controlled by a byte budget. Each admitted solve receives a task-local
-reservation used to size its kernel batches. Concurrent solves therefore cannot
-each size batches against the full shared memory pool.
+random sketch and task scheduling can otherwise affect results. A failure in one
+transformation does not abort the others, and each result includes the
+diagnostics described above. Available device memory limits concurrency. A
+calibration solve estimates peak memory. The sweep then admits tasks within a
+byte budget and assigns each task a local reservation for sizing kernel batches.
+This prevents concurrent tasks from each assuming access to the full memory
+pool.
 
 Concurrent execution reduced sweep time on both CPU and GPU
-(Table~\ref{tab:sweep}). CPU speed-up increased monotonically to $3.1\times$ and
-$1.6\times$ at $c=8$ for the two cases. GPU speed-up reached $1.7\times$ at
-$c=2$ and $1.4\times$ at $c=4$. At $c=1$, fixed sweep setup increased wall time
-because no solves overlapped. Energies agreed for every configuration. All
-ratios use the paired, interleaved protocol summarized in the table caption and
-documented in Supplementary Material 1, Section S3.
+(Table~\ref{tab:sweep}). CPU speed-up increased with $c$, reaching $3.1\times$
+and $1.6\times$ for the 36- and 128-spin cases at $c=8$. Among the measured GPU
+settings, the highest speed-ups were $1.7\times$ for the first case at $c=2$ and
+$1.4\times$ for the second at $c=4$.
+With $c=1$, setup overhead made the sweep slower because no solves overlapped.
+Serial and concurrent runs returned identical energies for every configuration.
+Ratios follow the paired, interleaved protocol described in the table caption
+and Supplementary Material 1, Section S3.
 
 \begin{table}[!htbp]
 \small
 \centering
-\caption{Speed-up of the concurrent sweep over the serial eight-transformation loop.
-Each entry is the median of per-round paired ratios, measured with interleaved arms
-and a full reclaim before every timed section. Intel Xeon Platinum 8462Y+ (CPU, 5
-rounds) and one NVIDIA H100 (GPU, 7 rounds). n.m. indicates not measured.}
+\caption{Speed-up from concurrent execution relative to a serial loop over eight
+transformations. Each entry is the median paired ratio across five CPU rounds or
+seven GPU rounds. Serial and concurrent measurements were interleaved, with full
+memory reclamation before each timed section. Measurements used an Intel Xeon
+Platinum 8462Y+ and one NVIDIA H100. n.m. denotes not measured.}
 \label{tab:sweep}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
@@ -316,51 +314,48 @@ Chimera 128-spin, $D{=}32$, \texttt{Zipper} & GPU & 0.83 & 1.22 & \textbf{1.43} 
 \end{table}
 
 The original article recommends GPU execution for larger examples. On the tested
-Xeon/H100 system, matched CPU and GPU configurations gave shorter GPU wall time
-in only one measured cell (Figure~\ref{fig:cross}). CPU wall time was about
-$45\times$ shorter at 36 spins.
-At 2048 spins and $D=16$, it was about $1.6\times$ shorter for the dense instance
-and $1.3\times$ shorter for the sparse instance. GPU wall time was about
-$1.4\times$ shorter only for the 2048-spin sparse instance at $D=32$. For the
-dense instance at that size, CPU wall time remained about 10\% shorter. Energies
-agreed in every measured cell. Supplementary Material 1, Table S1, reports all
-ratios and protocol details.
+Xeon/H100 system, the GPU had lower wall time in only one matched configuration
+(Figure~\ref{fig:cross}). At 36 spins, CPU wall time was roughly 2\% of GPU wall
+time. At 2048 spins and $D=16$, the CPU/GPU wall-clock ratios were 0.64 for the
+dense instance and 0.78 for the sparse instance. At $D=32$, the ratios were 0.90
+and 1.45, respectively, making the sparse case the only GPU-favorable
+configuration. All matched runs returned the same energy. Supplementary
+Material 1, Table S1, gives the complete ratios and protocol.
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.62\linewidth]{crossover.pdf}
-\caption{CPU/GPU wall-clock ratio on identical configurations. Ratios below one
-indicate shorter CPU wall time. A ratio above one occurred only for the
-2048-spin sparse instance at $D=32$. Measurements used \texttt{Zipper},
+\caption{CPU/GPU wall-clock ratios for matched configurations. Values below one
+indicate lower CPU wall time. The GPU had lower wall time only for the 2048-spin
+sparse instance at $D=32$. Measurements used \texttt{Zipper},
 \texttt{SquareSingleNode}, $\beta=3$ and \texttt{max\_states}${=}128$ on an
 Intel Xeon Platinum 8462Y+ and one NVIDIA H100. Supplementary Material 1,
-Table S1, reports the complete values.}
+Table S1, gives the complete values.}
 \label{fig:cross}
 \end{figure}
 \FloatBarrier
 
 \subsection{Profiling and allocation}
 
-On a profiled 128-spin solve, host-side CUDA API calls covered 27.0\% of the
-profiled span and GPU activities covered 6.6\%. These intervals may overlap, so
-at least 66.5\% of the span lay outside the two recorded categories. This large
-host interval is consistent with the measured CPU/GPU crossover. Faster tensor
-kernels do not reduce host-side bookkeeping.
+On a profiled 128-spin solve, host-side CUDA API calls occupied 27.0\% of the
+profiled interval and GPU activities occupied 6.6\%. Because these intervals may
+overlap, at least 66.5\% lay outside both categories. The low GPU-activity share
+is consistent with the crossover results because faster tensor kernels cannot
+reduce host-side work.
 
-Kernel-level batching could reduce device idle time. We did not implement it
-because eliminating the entire measured CUDA API share gives an Amdahl-style
-upper bound of about $1.4\times$ for this profile. Host allocation could be
-reduced directly. In the published code, \texttt{branch\_states} accounted for
-52.7\% of the bytes allocated by a 128-spin solve. This motivated two changes
-(Figure~\ref{fig:alloc}). First, a single matrix now stores branched
-configurations instead of tens of thousands of small vectors per call. Allocated
-bytes fell by about 4\% in the large GPU run and 1\% in the corresponding CPU
-run. The main effect is a lower live-object count. Second, multi-tensor
-contraction temporaries moved from the collected heap to explicit allocation.
-This reduced allocated bytes for a 2048-spin, bond-32 CPU solve by about two
-thirds, from 90.9 to 32~GiB. Both changes were measured in a full solve. The
-explicit allocator was not faster in isolation. Its benefit comes from removing
-allocations from the collected heap.
+Kernel-level batching could reduce device idle time, but eliminating the entire
+measured CUDA API interval would still cap the Amdahl speed-up at about
+$1.4\times$. We focused instead on host allocation. In the pre-change
+implementation, \texttt{branch\_states} accounted for 52.7\% of the bytes
+allocated by a 128-spin solve. A single matrix now stores branched configurations
+instead of tens of thousands of small vectors per call
+(Figure~\ref{fig:alloc}). In the 2048-spin, bond-32 case, this reduced allocated
+bytes by about 4\% on GPU and 1\% on CPU, while primarily reducing the live-object
+count. Multi-tensor contraction temporaries were also moved off the
+garbage-collected heap. For the corresponding CPU solve, allocated bytes fell
+from 90.9 to 32~GiB, a reduction of about two thirds. Both changes were measured
+in full solves. The explicit allocator was not faster in isolation. Its benefit
+is reduced garbage-collected allocation.
 
 \begin{figure}[H]
 \centering
@@ -376,24 +371,22 @@ because it primarily reduces the live-object count. The post-change totals were
 \end{figure}
 \FloatBarrier
 
-\subsection{Impact, limitations and outlook}
+\subsection{Impact and limitations}
 
-The new diagnostic exposes substantial truncation loss in cold contractions when
-no exact answer is available, the regime the method targets. The consolidation
-and the deprecation shims make the published interface reproducible, and
-shipping the benchmark instances closes a gap in that reproducibility that
-predates this update. Supplementary Material 1 summarizes the additional
-results, measurement protocols, provenance and regression coverage.
-Supplementary Data 1 contains the \texttt{benchmarks/} directory with raw
-per-run data, figure scripts and runnable drivers for the crossover,
-concurrency, diversity, energy-vs-runtime, contraction-error and
-$\beta$-ladder results. The allocation figure's pre-change values are recorded
-measurements of the superseded code.
+For instances without a known optimum, the discarded-weight diagnostic reports
+accumulated loss from cold-contraction truncations. The consolidated
+package defines one public API, and deprecation shims preserve renamed entry
+points. Bundling the benchmark instances makes the reported runs reproducible.
+Supplementary Material 1 gives the additional results, protocols, provenance
+and regression coverage. Supplementary Data 1 contains raw per-run data, figure
+scripts and runnable drivers in the \texttt{benchmarks/} directory. The
+pre-change values in Figure~\ref{fig:alloc} are recorded measurements from the
+superseded implementation.
 
-Warm starting currently covers only the bottom boundary MPS, so layouts that
-build the top boundary do not benefit on those rows. $\sum\varepsilon$ did not
-select $\beta$ in our tests. The package therefore documents it as a diagnostic
-rather than a selection criterion.
+Warm starts currently retain only the bottom-boundary MPS. Rows contracted from
+the top cannot reuse it. In our tests, $\sum\varepsilon$ did not identify the
+$\beta$ yielding the lowest energy reliably, so the package documents it as a
+diagnostic rather than a selection criterion.
 
 
 %% Keep pending floats before the reference list without forcing a page break.
@@ -404,8 +397,8 @@ rather than a selection criterion.
 \noindent\textbf{Supplementary Material 1.} Benchmark protocols, additional
 results, provenance and validation.
 
-\noindent\textbf{Supplementary Data 1.} Reproduction drivers, raw and
-summarized CSV data, plotting scripts, generated figures and README.
+\noindent\textbf{Supplementary Data 1.} Benchmark drivers, raw and summary CSV
+files, plotting scripts, generated figures and README.
 
 \section*{CRediT authorship contribution statement}
 
@@ -428,11 +421,11 @@ influence the work reported in this paper.
 
 \section*{Data availability}
 
-The version 2.0.1 source code and benchmark instances are archived on
-Zenodo~\cite{spinglasspeps_zenodo}. The available benchmark records, drivers and
-plotting scripts supporting the reported results are provided as Supplementary
-Data 1. Raw logs for the historical pre-change allocation measurements were not
-retained. The corresponding summary values and protocol context are included.
+SpinGlassPEPS.jl v2.0.1 and its benchmark instances are archived on
+Zenodo~\cite{spinglasspeps_zenodo}. Supplementary Data 1 provides the benchmark
+records, drivers and plotting scripts used for the reported results. Raw logs
+for the historical pre-change allocation measurements were not retained. The
+summary values and measurement protocol are included.
 
 \section*{Acknowledgements}
 \label{acknowledgements}

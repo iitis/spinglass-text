@@ -4,16 +4,15 @@
 \section{Matched CPU and GPU measurements}
 \label{sec:supp-crossover}
 
-Table~\ref{tab:supp-crossover} reports matched CPU and GPU wall times for
+Table~\ref{tab:supp-crossover} compares matched CPU and GPU wall times for
 identical solver configurations. Ratios are CPU wall time divided by GPU wall
-time. A ratio below one indicates shorter CPU wall time. The CPU and GPU arms
-ran in separate alternating processes on an Intel Xeon Platinum 8462Y+ and one
-NVIDIA H100. All measurements used \texttt{Zipper},
+time. CPU and GPU measurements alternated, with each run executed in a separate
+process on an Intel Xeon Platinum 8462Y+ and one NVIDIA H100. All measurements used \texttt{Zipper},
 \texttt{SquareSingleNode}, $\beta=3$, and \texttt{max\_states}=128. Search
-breadth was held fixed to isolate device-dependent contraction work because the
-branch-and-bound search runs on the host in both arms. The 36-spin and 128-spin
-cells used seven repetitions per device. The 2048-spin cells used two because
-of their higher cost. The summary reports the minimum wall time for each arm.
+breadth was fixed to isolate device-dependent contraction work. The
+branch-and-bound search runs on the host in both arms. The 36- and 128-spin cases
+used seven repetitions per device. The 2048-spin cases used two because of their
+higher computational cost. The summary uses the minimum wall time for each arm.
 
 \begin{table}[htbp]
 \small
@@ -44,8 +43,8 @@ are stored in \suppfile{crossover.csv}.
 \label{sec:supp-diversity}
 
 The diversity experiments used 2500-spin square-lattice instances without local
-fields. Each state $\sigma$ therefore has an exactly degenerate global spin flip
-$-\sigma$. To avoid counting this symmetry-related pair as two valleys,
+fields, so every state $\sigma$ and its global spin flip $-\sigma$ have exactly
+the same energy. To avoid counting this symmetry-related pair as two valleys,
 distances are reported as
 \[
     d_{\mathbb{Z}_2}(\sigma,\tau)
@@ -55,27 +54,29 @@ where $d_H$ is Hamming distance and $N=2500$. The largest possible quotient
 distance is $N/2=1250$. The diversity criterion used in the original article is
 $N/4=625$.
 
-At \texttt{max\_states}=1024, 49 of the 50 tested instance and temperature runs
-remained within one valley. Their maximum quotient distance from a returned
-state to the best returned state was at most 399. The sole exception was
-instance 1 at $\beta=8$. Its returned energy was 8.12 above the lowest energy
-among the five fixed-order $\beta$ runs for that instance. The run did not
-return the exact global spin flip. We therefore interpret this point as a
-degraded contraction rather than evidence of an additional low-energy valley.
+Of the 50 instance-temperature runs tested at \texttt{max\_states}=1024, 49
+remained within one valley. Across those runs, the largest quotient distance
+between any returned state and the best returned state was 399. The sole
+exception was instance 1 at $\beta=8$. Its best returned energy was 8.12 above
+the lowest energy among the five fixed-order $\beta$ runs for that instance. No
+returned state was the global spin flip of the best returned state. We interpret
+this result as a degraded contraction rather than evidence of an additional
+low-energy valley.
 
-Changing the contraction order produced a broader solution set. Taking one
-state from each of the eight lattice transformations at $\beta=4$ produced two
+Varying the contraction order broadened the solution set. At $\beta=4$,
+selecting one state from each of the eight lattice transformations yielded two
 or three distinct valleys on four of five instances. Pairwise quotient distances
-reached 1249 of the possible 1250. The transformation sweep therefore increased
-diversity while the relative energy spread across transformations remained
-between $2.21\times10^{-4}$ and $5.74\times10^{-4}$.
+reached 1249, compared with the maximum possible value of 1250. Across the same
+transformations, the relative energy spread ranged from $2.21\times10^{-4}$ to
+$5.74\times10^{-4}$.
 
 The per-run distance quantiles are stored in \suppfile{div3.csv} and
 \suppfile{div3_extra.csv}. The per-instance cross-transformation measurements
 are in \suppfile{xtransform.csv}. Panel (d) of Figure~1 in the main article
 reports medians over ten instances of the 50th, 90th, and 100th within-run
-distance percentiles. Its square markers report the median pairwise minimum,
-median, and maximum across the five transformation-sweep instances.
+distance percentiles. At $\beta=4$, the square marks the median across five
+transformation-sweep instances of the pairwise median distance. Its error bars
+extend to the corresponding medians of the pairwise minimum and maximum.
 
 \begin{table}[htbp]
 \scriptsize
@@ -171,24 +172,24 @@ Median ratio & Ratio interval & Reduction \\
 
 \subsection{Timing contamination checks}
 
-This protocol was adopted after a sequential protocol produced an invalid
-performance result. In a recorded development measurement without a retained
-raw log, timing the serial arm after a concurrent warm-up left the CUDA memory
-pool in a different state. For identical work, one serial baseline increased
-from 14.3~s to 38.8~s, a factor of approximately 2.7. The contaminated baseline
-indicated a speed-up of $1.68\times$, while the corrected paired protocol gave
-$0.92\times$. Reported sweep and ladder ratios use the interleaved protocol and
-the reclamation steps described above.
+A misleading result from a sequential protocol motivated the paired design. We
+retained its summary values, but not the raw development log. A concurrent
+warm-up left the CUDA memory pool in a different state when the serial arm was
+timed.
+For identical work, the serial baseline rose from 14.3~s to 38.8~s, a factor of
+approximately 2.7. The contaminated baseline implied a speed-up of
+$1.68\times$, whereas the corrected paired protocol gave $0.92\times$. All
+reported sweep and ladder ratios use the interleaved protocol and reclamation
+steps above.
 
 The crossover experiment uses alternating separate processes. Each process
 receives an uncontended device, and the summary uses the minimum of its repeated
 wall-time measurements. Timing runs were performed on an otherwise idle
 machine.
 
-One exploratory run that overlapped the full package test suite produced a
-different energy for one of 30 points. It is excluded from the timing results
-because the machine was not idle. The source of the difference remains
-unresolved.
+An exploratory benchmark run coincided with the full package test suite and
+returned a different energy at one of 30 benchmark points. We excluded that run
+because the machine was not idle. The cause of the difference remains unresolved.
 \FloatBarrier
 
 \section{Reproducibility inventory}
@@ -205,8 +206,8 @@ PKG=../../SpinGlassPEPS.jl GPU=0 SEED=1 ./run_all.sh
 
 The energy/runtime and fixed-order diversity drivers use
 \texttt{SEED + instance}, reset the random stream before each solve, and record
-the derived seed in every CSV row. Matching parameter settings therefore use
-the same random stream independently of loop order.
+the derived seed in every CSV row. Matching parameter settings use the same
+random stream independently of loop order.
 
 The launcher instantiates the package environment, runs the measurement drivers,
 writes raw and summarized CSV files, and regenerates the figures.
@@ -254,9 +255,9 @@ The 36-spin, 128-spin, and 2048-spin instances are distributed in
 are in \path{benchmark/instances/square_50x50/}. Crossover, concurrency,
 post-change allocation, profiling, and ladder measurements used an Intel Xeon
 Platinum 8462Y+ system. GPU measurements used one NVIDIA H100.
-\path{xtransform.csv} was reproduced byte for byte in a multithreaded run
-recorded as \path{xtransform_multithread.csv}. The discarded-weight results in
-\path{eps_stats.csv} record the tested CPU calculation.
+A multithreaded run reproduced \path{xtransform.csv} byte for byte. Its output
+is stored as \path{xtransform_multithread.csv}. The discarded-weight calculation
+recorded in \path{eps_stats.csv} ran on the CPU.
 
 \subsection{Discarded-weight record}
 
@@ -289,9 +290,9 @@ superseded code and cannot be regenerated from v2.0.0. They are retained in
 \suppfile{alloc.csv}. Their development code state and protocol are documented
 in \suppfile{README.md}. The supplied driver regenerates the final combined
 v2.0.0 totals in \suppfile{alloc_raw.csv}.
-Table~\ref{tab:supp-allocation} reads the committed isolated-change records in
-\suppfile{alloc.csv}, whose post-change arms are not all regenerated by
-\suppfile{run_all.sh}.
+Table~\ref{tab:supp-allocation} reports the committed isolated-change records in
+\suppfile{alloc.csv}. \suppfile{run_all.sh} does not regenerate every
+post-change arm in that file.
 
 \begin{table}[htbp]
 \small
