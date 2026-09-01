@@ -93,7 +93,7 @@ Instance & $\beta=2$ & $\beta=3$ & $\beta=4$ & $\beta=6$ & $\beta=8$ \\
 4  & 50/78/94 & 257/293/308 & 8/37/44 & 7/12/52 & 8/13/51 \\
 5  & 17/48/63 & 46/60/191 & 42/51/189 & 12/51/190 & 8/45/152 \\
 6  & 4/10/13 & 7/13/399 & 10/14/17 & 4/8/11 & 67/71/74 \\
-7  & 8/13/19 & 8/12/19 & 32/37/42 & 6/10/13 & 323/328/332 \\
+7  & 8/13/19 & 8/12/19 & 32/37/42 & 6/10/13 & 323/329/333 \\
 8  & 17/39/45 & 14/27/35 & 28/52/65 & 22/33/40 & 12/19/24 \\
 9  & 10/27/32 & 9/24/52 & 15/41/48 & 6/46/51 & 349/352/371 \\
 10 & 9/16/26 & 18/28/37 & 16/64/71 & 10/17/23 & 10/17/23 \\
@@ -194,14 +194,19 @@ unresolved.
 \section{Reproducibility inventory}
 \label{sec:supp-reproducibility}
 
-The drivers use the \texttt{SpinGlassPEPS.jl} v2.0.0 API. The launcher runs the
+The drivers use the \texttt{SpinGlassPEPS.jl} v2.0.1 API. The launcher runs the
 local checkout selected by \texttt{PKG}. To reproduce the article values, check
-out the v2.0.0 tag before launching the complete suite from the supplementary
+out the v2.0.1 tag before launching the complete suite from the supplementary
 \suppdatadir{} directory with
 
 \begin{verbatim}
 PKG=../../SpinGlassPEPS.jl GPU=0 SEED=1 ./run_all.sh
 \end{verbatim}
+
+The energy/runtime and fixed-order diversity drivers use
+\texttt{SEED + instance}, reset the random stream before each solve, and record
+the derived seed in every CSV row. Matching parameter settings therefore use
+the same random stream independently of loop order.
 
 The launcher instantiates the package environment, runs the measurement drivers,
 writes raw and summarized CSV files, and regenerates the figures.

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Launch the full benchmark suite behind the SpinGlassPEPS.jl v2.0.0 software-update
+# Launch the full benchmark suite behind the SpinGlassPEPS.jl v2.0.1 software-update
 # manuscript, regenerate the summary CSVs, and render the figures.
 #
 # Run from spinglass-text/benchmarks/. Assumes a SpinGlassPEPS.jl checkout alongside
-# the spinglass-text folder (../../SpinGlassPEPS.jl), ideally the tagged v2.0.0
+# the spinglass-text folder (../../SpinGlassPEPS.jl), ideally the tagged v2.0.1
 # release. Writes raw + summary CSVs here and figures into ../figures/.
 #
 # Multi-GPU hosts: the crossover/allocation numbers are TIMINGS, so each is measured
@@ -86,10 +86,10 @@ echo "-- energy-vs-runtime sweep (CPU) --"
 OUT="$HERE/sweep50_cpu.csv" NINST=10 DEV=cpu SEED=$SEED CUDA_VISIBLE_DEVICES="" run "$HERE/sweep50.jl" \
   || echo "  !! sweep50 failed"
 echo "-- solution spread, beta 2,4,6 --"
-OUT="$HERE/div3.csv"       NINST=10 BETAS="2.0,4.0,6.0" SEED=$SEED CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/spread.jl" \
+OUT="$HERE/div3.csv"       NINST=10 BETAS="2.0,4.0,6.0" SEED=$SEED CUDA_VISIBLE_DEVICES="" run "$HERE/spread.jl" \
   || echo "  !! spread(2,4,6) failed"
 echo "-- solution spread, beta 3,8 --"
-OUT="$HERE/div3_extra.csv" NINST=10 BETAS="3.0,8.0"     SEED=$SEED CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/spread.jl" \
+OUT="$HERE/div3_extra.csv" NINST=10 BETAS="3.0,8.0"     SEED=$SEED CUDA_VISIBLE_DEVICES="" run "$HERE/spread.jl" \
   || echo "  !! spread(3,8) failed"
 echo "-- cross-transformation valley distances --"
 OUT="$HERE/xtransform.csv" NINST=5 CUDA_VISIBLE_DEVICES="$GPU" run "$HERE/xtransform.jl" \

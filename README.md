@@ -46,9 +46,9 @@ the required `manuscript.bbl`, and `benchmarks/` as ancillary files.
 
 Every benchmark is runnable from `benchmarks/` and its results are committed
 there as CSVs; `benchmarks/makefigs.py` regenerates the manuscript figures into
-`figures/`. The few values that cannot be re-run from v2.0.0 by definition (the
-pre-change arms of the before/after comparisons, which measure the superseded
-code) are recorded with their protocol in `benchmarks/README.md`.
+`figures/`. The few values that cannot be re-run from the current release by
+definition, namely the pre-change arms of the before/after comparisons, are
+recorded with their protocol in `benchmarks/README.md`.
 
 Building needs `elsarticle.cls`, present in TeX Live. Both versions compile with
 **zero** undefined references or citations.
@@ -75,23 +75,25 @@ and a licence file, and a **GitHub** URL in C2 (other hosts are not accepted).
 
 ## Remaining pre-submission actions
 
-1. **Zenodo deposit authorship (optional).** The v2.0.0 record's creator list is
+1. **Zenodo deposit authorship (optional).** The v2.0.1 record's creator list is
    auto-generated from GitHub contributors and includes raw usernames
    (`annamariadziubyna`, `zpuchala`); worth curating on Zenodo since that record
    is the citable archive.
-2. **Select the benchmark archive item type before upload.** Editorial Manager
+2. **Deploy the v2.0.1 documentation and update the package badge.** The
+   versioned `/v2.0.1/` documentation is not deployed yet, so manuscript field
+   C7 currently uses `/stable/`, which still serves v2.0.0. The package README
+   DOI badge also still points to the v2.0.0 record instead of the concept DOI.
+3. **Select the benchmark archive item type before upload.** Editorial Manager
    unpacks ZIP files by default. Use the journal's non-unpacking supplementary
    archive type if it is available. Otherwise upload the data files individually
    or deposit the archive in a data repository and cite its DOI. Upload
    `SupplementMethods.pdf` separately, use the caption Supplementary Material 1,
    and select the supplemental item type offered by the journal.
 
-*Done:* v2.0.0 is tagged, released, registered in the Julia General registry, and
-archived on Zenodo (`10.5281/zenodo.22134580`, pinned in `refs.bib`). C1 names a
-real release, C2 points at `/tree/v2.0.0`, and C7 at the deployed `/v2.0.0/` docs
-(`DOCUMENTER_NEWEST = v2.0.0`; `/stable/` now serves the same build). The package
-README badge now displays and links to the concept DOI
-`10.5281/zenodo.14627392`.
+*Done:* v2.0.1 is tagged, released, registered in the Julia General registry, and
+archived on Zenodo (`10.5281/zenodo.22211698`, pinned in `refs.bib`). C1 names a
+real release and C2 points at `/tree/v2.0.1`. The release series retains concept
+DOI `10.5281/zenodo.14627392`.
 
 *Settled:* authorship (Łukasz Pawela and Bartłomiej Gardas, i.e. the authors of
 the update; the other names on the 2025 article authored the original package);
@@ -104,13 +106,14 @@ paper); the official template port; the ~100-word abstract.
 The main concurrency table and Supplementary Table S1 recompute from committed
 raw CSVs via the supplied summarizers. The other numerical supplementary tables
 are direct summaries of committed CSV records. `makefigs.py` regenerates the
-figures byte-identically from those records. The
+figures from those records. The
 contraction-error examples and the β-ladder result quoted in prose have their own
 drivers (`eps_stats.jl`, `ladder.jl`, `profile.jl`) with committed results. What
 remains recorded-only (with protocol, in `benchmarks/README.md`) is what cannot be
-re-run from v2.0.0: the 52.7% allocation share of the `branch_states` line as
-published, the pre-change arms of the allocation comparison, and the 2.7× warm-up
-caution. All of those measure the superseded code.
+re-run from the current release: the 52.7% allocation share of the
+`branch_states` line as published, the pre-change arms of the allocation
+comparison, and the 2.7× warm-up caution. All of those measure the superseded
+code.
 
 - **The single-GPU concurrency result is device-dependent, and the manuscript says
   which device.** On the H100 the concurrent sweep pays (1.69×/1.44× at c=2/c=4,

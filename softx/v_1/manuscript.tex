@@ -40,10 +40,10 @@
 \begin{frontmatter}
 
 %% You must use the format "Version [number] - [title of your first SoftwareX publication]"
-\title{Version 2.0.0 - SpinGlassPEPS.jl: Tensor-network package for
+\title{Version 2.0.1 - SpinGlassPEPS.jl: Tensor-network package for
 Ising-like optimization on quasi-two-dimensional graphs}
 
-%% Authorship: this v2.0.0 update is authored by {\L}ukasz Pawela and
+%% Authorship: this v2.0.1 update is authored by {\L}ukasz Pawela and
 %% Bart{\l}omiej Gardas -- the authors of the update. The remaining authors of the
 %% original publication wrote the original package, not the improvements described
 %% in this update.
@@ -99,10 +99,10 @@ Ising-like optimization on quasi-two-dimensional graphs}, SoftwareX \textbf{31}
 \hline
 Nr. & Code metadata description & Metadata \\
 \hline
-C1 & Current code version & v2.0.0 \\
+C1 & Current code version & v2.0.1 \\
 \hline
 C2 & Permanent link to code/repository used for this code version &
-\url{https://github.com/euro-hpc-pl/SpinGlassPEPS.jl/tree/v2.0.0} \\
+\url{https://github.com/euro-hpc-pl/SpinGlassPEPS.jl/tree/v2.0.1} \\
 \hline
 C3 & Legal Code License & Apache License 2.0 \\
 \hline
@@ -117,7 +117,7 @@ LowRankApprox.jl, Graphs.jl and MetaGraphs.jl. A CUDA-capable GPU is optional.
 Continuous integration exercises the CPU path. HDF5 is an optional extension \\
 \hline
 C7 & If available Link to developer documentation/manual &
-\url{https://euro-hpc-pl.github.io/SpinGlassPEPS.jl/v2.0.0/} \\
+\url{https://euro-hpc-pl.github.io/SpinGlassPEPS.jl/stable/} \\
 \hline
 C8 & Support email for questions & \texttt{lpawela@iitis.pl} \\
 \hline
@@ -140,7 +140,7 @@ reported no measure of truncation loss during its heuristic contraction, leaving
 users without an internal diagnostic when an exact reference solution was
 unavailable. The original benchmark instead certified ground states with CPLEX.
 Algorithms and an extensive benchmark campaign are described
-separately~\cite{dziubyna2025limitations}. Version 2.0.0 is archived on
+separately~\cite{dziubyna2025limitations}. Version 2.0.1 is archived on
 Zenodo~\cite{spinglasspeps_zenodo}.
 
 All the packages are consolidated into one. The four implementation packages
@@ -233,16 +233,16 @@ therefore report $\sum\varepsilon\approx0$ regardless of its variational gap.
 Consequently, $\sum\varepsilon$ is not a complete error diagnostic for a
 warm-started build. The package warns when \texttt{max\_discarded} is combined
 with a warm start. Second, $\sum\varepsilon$ does not rank solution quality. In
-Figure~\ref{fig:evr}(c) the energy error falls monotonically with $\beta$,
-reaching the best energy found in 9 of 10 instances at $\beta=6$, while
+Figure~\ref{fig:evr}(c) the median energy error decreases to zero by $\beta=6$,
+where 9 of 10 instances reach the best energy found. The median
 $\sum\varepsilon$ peaks at $\beta=4$ and then falls, because a sharply peaked
 Boltzmann distribution carries less entanglement and truncates more easily. At
-$\beta=2$, $\sum\varepsilon$ was near its minimum but the energy error was
-largest. At $\beta=4$, $\sum\varepsilon$ was largest and the energy error was
-smaller.
+$\beta=2$, the median $\sum\varepsilon$ was near its minimum but the median
+energy error was largest. At $\beta=4$, the median $\sum\varepsilon$ was largest
+and the median energy error was smaller.
 
-Increasing search breadth did not increase diversity under the tested protocol.
-At $M=1024$, 49 of 50 runs remained within one valley under the $N/4$ criterion
+At the largest tested search breadth, $M=1024$, 49 of 50 runs remained within
+one valley under the $N/4$ criterion
 after quotienting the exact global spin-flip symmetry (Figure~\ref{fig:evr}(d)).
 In contrast, taking one result from each of the eight lattice transformations
 produced two or three distinct valleys on four of five instances. Pairwise
@@ -428,7 +428,7 @@ influence the work reported in this paper.
 
 \section*{Data availability}
 
-The version 2.0.0 source code and benchmark instances are archived on
+The version 2.0.1 source code and benchmark instances are archived on
 Zenodo~\cite{spinglasspeps_zenodo}. The available benchmark records, drivers and
 plotting scripts supporting the reported results are provided as Supplementary
 Data 1. Raw logs for the historical pre-change allocation measurements were not
