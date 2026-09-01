@@ -391,23 +391,6 @@ diagnostic rather than a selection criterion.
 %% Keep pending floats before the reference list without forcing a page break.
 \FloatBarrier
 
-\appendix
-\setcounter{section}{0}
-\setcounter{table}{0}
-\setcounter{equation}{0}
-\renewcommand{\thesection}{S\arabic{section}}
-\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
-\renewcommand{\thetable}{S\arabic{table}}
-\renewcommand{\theequation}{S\arabic{equation}}
-\renewcommand{\theHsection}{supp.\arabic{section}}
-\renewcommand{\theHtable}{supp.\arabic{table}}
-\renewcommand{\theHequation}{supp.\arabic{equation}}
-\newcommand{\suppdatadir}{\path{anc/benchmarks/}}
-\newcommand{\suppfile}[1]{\path{anc/benchmarks/#1}}
-\section*{Supplementary material}
-\input{supplementary-content}
-\FloatBarrier
-
 \section*{CRediT authorship contribution statement}
 
 \noindent\textbf{{\L}ukasz Pawela:} Conceptualization, Formal analysis, Funding
@@ -445,5 +428,22 @@ no.~2025/58/E/ST6/00422 ({\L}.P.).
 
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}
+
+\appendix
+\setcounter{section}{0}
+\setcounter{table}{0}
+\setcounter{equation}{0}
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\theequation}{S\arabic{equation}}
+\renewcommand{\theHsection}{supp.\arabic{section}}
+\renewcommand{\theHtable}{supp.\arabic{table}}
+\renewcommand{\theHequation}{supp.\arabic{equation}}
+\newcommand{\suppdatadir}{\path{anc/benchmarks/}}
+\newcommand{\suppfile}[1]{\path{anc/benchmarks/#1}}
+\section*{Supplementary material}
+\input{supplementary-content}
+\FloatBarrier
 
 \end{document}
