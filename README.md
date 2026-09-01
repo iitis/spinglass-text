@@ -12,7 +12,7 @@ softx/v_1/             SoftwareX submission version (official update template,
 arxiv/v_1/             arXiv version: line numbering removed and the same
                        supplementary content included under \appendix. run.sh
                        builds the manuscript and arxiv-submission.zip (tex +
-                       .bbl + supplementary source + figures + ancillary data)
+                       .bbl + figures)
 
 benchmarks/            runnable drivers + committed raw/summary results behind every
                        figure, table, and prose number (see benchmarks/README.md)
@@ -41,8 +41,9 @@ because the run scripts regenerate them. The source archive is flat, as required
 by Elsevier's LaTeX instructions.
 
 The arXiv PDF contains the full supplement as Sections S1--S5 after the
-`\appendix` command. Its upload archive includes `supplementary-content.tex`,
-the required `manuscript.bbl`, and `benchmarks/` as ancillary files.
+`\appendix` command. The appendix source is inlined in `manuscript.tex`. The
+upload archive contains that file, the required `manuscript.bbl`, and the three
+PDF figures.
 
 Every benchmark is runnable from `benchmarks/` and its results are committed
 there as CSVs; `benchmarks/makefigs.py` regenerates the manuscript figures into
